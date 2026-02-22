@@ -128,7 +128,7 @@ The policy attaches an obligation to mask the SSN field, disclosing only the las
 curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/constraints/patient | jq
 ```
 
-Expected: `{ "name": "Jane Doe", "ssn": "XXXXX6789", "email": "jane.doe@example.com", ... }`
+Expected: `{ "name": "Jane Doe", "ssn": "███████6789", "email": "jane.doe@example.com", ... }`
 
 Policy obligation:
 ```json
