@@ -1,0 +1,7 @@
+{
+  "algorithm": {
+    "votingMode": "PRIORITY_PERMIT",
+    "defaultDecision": "DENY",
+    "errorHandling": "ABSTAIN"
+  }
+}

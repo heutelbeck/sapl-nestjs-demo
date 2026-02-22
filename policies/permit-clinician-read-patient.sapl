@@ -1,0 +1,17 @@
+policy "permit-clinician-read-patient"
+priority 1
+permit
+  action == "readPatient";
+  resource == "patient";
+  subject.user_role == "CLINICIAN"
+obligation
+  {
+    "type": "filterJsonContent",
+    "actions": [
+      {
+        "type": "blacken",
+        "path": "$.ssn",
+        "discloseRight": 4
+      }
+    ]
+  }

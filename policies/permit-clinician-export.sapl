@@ -1,0 +1,6 @@
+policy "permit-clinician-export"
+priority 1
+permit
+  action == "exportData";
+  subject.user_role == "CLINICIAN";
+  subject.pilotId == resource.pilotId

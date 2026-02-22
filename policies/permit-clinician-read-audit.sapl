@@ -1,0 +1,6 @@
+policy "permit-clinician-read-audit"
+priority 1
+permit
+  action == "readAudit";
+  resource == "audit";
+  subject.user_role == "CLINICIAN"

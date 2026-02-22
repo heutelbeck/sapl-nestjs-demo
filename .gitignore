@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+dist/
+
+# Environment (personal overrides and secrets)
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Test
+coverage/
