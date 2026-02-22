@@ -1,0 +1,25 @@
+policy "permit-clinician-patient-full"
+permit
+  action == "readPatientFull";
+  resource == "patientFull";
+  <jwt.token>.payload.user_role == "CLINICIAN";
+obligation
+  {
+    "type": "filterJsonContent",
+    "actions": [
+      {
+        "type": "blacken",
+        "path": "$.ssn",
+        "discloseRight": 4
+      },
+      {
+        "type": "delete",
+        "path": "$.internalNotes"
+      },
+      {
+        "type": "replace",
+        "path": "$.email",
+        "replacement": "redacted@example.com"
+      }
+    ]
+  }

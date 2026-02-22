@@ -1,5 +1,4 @@
 policy "permit-read-hello"
-priority 1
 permit
   action == "read";
-  resource == "hello"
+  resource == "hello";

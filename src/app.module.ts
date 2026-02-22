@@ -5,6 +5,13 @@ import { AuthModule } from './auth/auth.module';
 import { AppController } from './app.controller';
 import { ConstraintDemoController } from './constraint-demo.controller';
 import { AppService } from './app.service';
+import { LogAccessHandler } from './handlers/log-access.handler';
+import { AuditTrailHandler } from './handlers/audit-trail.handler';
+import { RedactFieldsHandler } from './handlers/redact-fields.handler';
+import { ClassificationFilterHandler } from './handlers/classification-filter.handler';
+import { InjectTimestampHandler } from './handlers/inject-timestamp.handler';
+import { NotifyOnErrorHandler } from './handlers/notify-on-error.handler';
+import { EnrichErrorHandler } from './handlers/enrich-error.handler';
 
 @Module({
   imports: [
@@ -25,6 +32,15 @@ import { AppService } from './app.service';
     }),
   ],
   controllers: [AppController, ConstraintDemoController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    LogAccessHandler,
+    AuditTrailHandler,
+    RedactFieldsHandler,
+    ClassificationFilterHandler,
+    InjectTimestampHandler,
+    NotifyOnErrorHandler,
+    EnrichErrorHandler,
+  ],
 })
 export class AppModule {}

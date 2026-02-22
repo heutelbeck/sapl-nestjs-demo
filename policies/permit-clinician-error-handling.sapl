@@ -1,0 +1,14 @@
+policy "permit-clinician-error-handling"
+permit
+  action == "readErrorDemo";
+  resource == "errorDemo";
+  <jwt.token>.payload.user_role == "CLINICIAN";
+obligation
+  {
+    "type": "notifyOnError"
+  }
+obligation
+  {
+    "type": "enrichError",
+    "supportUrl": "https://support.example.com/errors"
+  }

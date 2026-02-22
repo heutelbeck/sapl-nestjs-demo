@@ -1,6 +1,5 @@
 policy "permit-clinician-read-audit"
-priority 1
 permit
   action == "readAudit";
   resource == "audit";
-  subject.user_role == "CLINICIAN"
+  <jwt.token>.payload.user_role == "CLINICIAN";

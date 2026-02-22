@@ -1,0 +1,10 @@
+policy "permit-clinician-logged"
+permit
+  action == "readLogged";
+  resource == "logged";
+  <jwt.token>.payload.user_role == "CLINICIAN";
+obligation
+  {
+    "type": "logAccess",
+    "message": "Patient data accessed by clinician"
+  }

@@ -1,0 +1,10 @@
+policy "permit-clinician-documents"
+permit
+  action == "readDocuments";
+  resource == "documents";
+  <jwt.token>.payload.user_role == "CLINICIAN";
+obligation
+  {
+    "type": "filterByClassification",
+    "maxLevel": "INTERNAL"
+  }

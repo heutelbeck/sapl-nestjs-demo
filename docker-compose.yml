@@ -13,9 +13,15 @@ services:
   sapl-pdp:
     image: ghcr.io/heutelbeck/sapl-node:4.0.0-SNAPSHOT
     ports:
-      - "8443:8080"
+      - "8443:8443"
     volumes:
       - ./policies:/pdp/data:ro
     environment:
-      - IO_SAPL_NODE_ALLOWNOAUTH=true
+      - SERVER_SSL_ENABLED=false
+      - SERVER_PORT=8443
+      - SERVER_ADDRESS=0.0.0.0
       - JAVA_TOOL_OPTIONS=-XX:MaxDirectMemorySize=256M
+      - IO_SAPL_NODE_ALLOWNOAUTH=true
+      - IO_SAPL_PDP_EMBEDDED_POLICIESPATH=/pdp/data
+      - IO_SAPL_PDP_EMBEDDED_PRINTTEXTREPORT=true
+    restart: unless-stopped

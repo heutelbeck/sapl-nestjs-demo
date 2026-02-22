@@ -1,0 +1,15 @@
+policy "permit-clinician-advised"
+permit
+  action == "readAdvised";
+  resource == "advised";
+  <jwt.token>.payload.user_role == "CLINICIAN";
+advice
+  {
+    "type": "logAccess",
+    "message": "Advisory: medical data accessed"
+  }
+advice
+  {
+    "type": "nonExistentAdviceHandler",
+    "note": "No handler exists for this type -- but access is still granted because advice is best-effort"
+  }

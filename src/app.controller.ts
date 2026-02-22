@@ -12,6 +12,18 @@ import { PdpService, PreEnforce, SubscriptionContext } from '@sapl/nestjs';
 import { AppService } from './app.service';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 
+function bearerToken(ctx: SubscriptionContext) {
+  return { jwt: ctx.request.headers?.authorization?.split(' ')[1] };
+}
+
+/**
+ * Demonstrates basic authorization patterns with @sapl/nestjs.
+ *
+ * These endpoints show the three fundamental ways to enforce policies:
+ *   1. Manual PDP access (PdpService.decideOnce)
+ *   2. @PreEnforce decorator (declarative, before method execution)
+ *   3. @PreEnforce with onDeny callback (custom deny handling)
+ */
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
 @Controller('api')
@@ -23,7 +35,20 @@ export class AppController {
     private readonly pdpService: PdpService,
   ) {}
 
-  // Manual PDP access without decorators.
+  /**
+   * Manual PDP Access -- no decorator
+   *
+   * Calls PdpService.decideOnce() directly to get a PDP decision.
+   * The application code is responsible for interpreting the decision
+   * and enforcing it manually.
+   *
+   * This is the most flexible approach but requires the most code.
+   * Use this when you need fine-grained control over how decisions
+   * are interpreted, or when you need to handle obligations/resource
+   * replacement in a custom way.
+   *
+   * The policy permit-read-hello permits any authenticated user.
+   */
   @Get('hello')
   async getHello(@Request() req) {
     const user = req.user;
@@ -35,6 +60,7 @@ export class AppController {
       subject: user,
       action: 'read',
       resource: 'hello',
+      secrets: { jwt: req.headers?.authorization?.split(' ')[1] },
     });
 
     this.logger.log(`PDP decision: ${JSON.stringify(decision)}`);
@@ -48,14 +74,29 @@ export class AppController {
     throw new ForbiddenException('Access denied by policy');
   }
 
-  // @PreEnforce with custom resource builder.
-  // Clinician can only export data for their own pilotId.
+  /**
+   * @PreEnforce with Custom Resource Builder
+   *
+   * The @PreEnforce decorator automates the PDP call and decision enforcement.
+   * Before the controller method runs:
+   *   1. Builds a SAPL subscription from EnforceOptions
+   *   2. Calls PdpService.decideOnce()
+   *   3. If PERMIT: builds constraint handler bundle, runs handlers, calls method
+   *   4. If DENY: throws ForbiddenException
+   *
+   * The "resource" callback receives the SubscriptionContext and builds a
+   * custom resource object from route parameters. The policy then uses this
+   * to match the clinician's pilotId against the requested pilotId.
+   *
+   * clinician1 (pilotId=1) can access /api/exportData/1/* but not /api/exportData/2/*
+   */
   @PreEnforce({
     action: 'exportData',
     resource: (ctx) => ({
       pilotId: ctx.params.pilotId,
       sequenceId: ctx.params.sequenceId,
     }),
+    secrets: bearerToken,
   })
   @Get('exportData/:pilotId/:sequenceId')
   getExportData(
@@ -66,14 +107,27 @@ export class AppController {
     return this.appService.getExportData(pilotId, sequenceId);
   }
 
-  // @PreEnforce with custom onDeny handler.
-  // Returns a structured JSON response instead of throwing 403.
+  /**
+   * @PreEnforce with Custom onDeny Handler
+   *
+   * When the PDP denies access, the default behavior is to throw
+   * ForbiddenException (HTTP 403). The onDeny callback overrides this
+   * to return a structured JSON response instead.
+   *
+   * The callback receives:
+   *   - ctx: SubscriptionContext (request, params, user info)
+   *   - decision: the full PDP decision object
+   *
+   * This is useful for SPAs or APIs that need machine-readable deny
+   * responses rather than HTTP error codes.
+   */
   @PreEnforce({
     action: 'exportData',
     resource: (ctx) => ({
       pilotId: ctx.params.pilotId,
       sequenceId: ctx.params.sequenceId,
     }),
+    secrets: bearerToken,
     onDeny: handleExportDeny,
   })
   @Get('exportData2/:pilotId/:sequenceId')
