@@ -31,13 +31,7 @@ The app starts on `http://localhost:3000`. Swagger UI is at `http://localhost:30
 ### 3. Get an access token
 
 ```bash
-TOKEN=$(curl -s -X POST 'http://localhost:8080/realms/demo/protocol/openid-connect/token' \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'grant_type=password' \
-  -d 'client_id=nestjs-app' \
-  -d 'client_secret=dev-secret' \
-  -d 'username=clinician1' \
-  -d 'password=password' | jq -r '.access_token')
+TOKEN=$(curl -s -X POST 'http://localhost:8080/realms/demo/protocol/openid-connect/token' -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=password' -d 'client_id=nestjs-app' -d 'client_secret=dev-secret' -d 'username=clinician1' -d 'password=password' | jq -r '.access_token')
 ```
 
 ### 4. Call endpoints
@@ -65,13 +59,7 @@ curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/constraints/
 curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/constraints/unhandled | jq
 
 # @PostEnforce with onDeny -- participant gets custom deny response
-PARTICIPANT_TOKEN=$(curl -s -X POST 'http://localhost:8080/realms/demo/protocol/openid-connect/token' \
-  -H 'Content-Type: application/x-www-form-urlencoded' \
-  -d 'grant_type=password' \
-  -d 'client_id=nestjs-app' \
-  -d 'client_secret=dev-secret' \
-  -d 'username=participant1' \
-  -d 'password=password' | jq -r '.access_token')
+PARTICIPANT_TOKEN=$(curl -s -X POST 'http://localhost:8080/realms/demo/protocol/openid-connect/token' -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=password' -d 'client_id=nestjs-app' -d 'client_secret=dev-secret' -d 'username=participant1' -d 'password=password' | jq -r '.access_token')
 curl -s -H "Authorization: Bearer $PARTICIPANT_TOKEN" http://localhost:3000/api/constraints/audit | jq
 ```
 
