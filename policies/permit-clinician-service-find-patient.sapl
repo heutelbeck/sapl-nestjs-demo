@@ -1,0 +1,10 @@
+policy "permit-clinician-service-find-patient"
+permit
+  action == "service:findPatient";
+  resource == "patient";
+  <jwt.token>.payload.user_role == "CLINICIAN";
+obligation
+  {
+    "type": "logAccess",
+    "message": "Patient search by name"
+  }

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
   MethodInvocationConstraintHandlerProvider,
+  MethodInvocationContext,
   SaplConstraintHandler,
 } from '@sapl/nestjs';
 
@@ -31,10 +32,10 @@ export class InjectTimestampHandler
     return constraint?.type === 'injectTimestamp';
   }
 
-  getHandler(_constraint: any): (request: any) => void {
-    return (request: any) => {
+  getHandler(_constraint: any): (context: MethodInvocationContext) => void {
+    return (context) => {
       const timestamp = new Date().toISOString();
-      request.policyTimestamp = timestamp;
+      context.request.policyTimestamp = timestamp;
       this.logger.log(`[METHOD] Injected policy timestamp: ${timestamp}`);
     };
   }

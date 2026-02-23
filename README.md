@@ -358,6 +358,101 @@ Expected (participant): `{ "denied": true, "reason": "DENY", "handler": "getAudi
 
 ---
 
+### Section 5: Service-Level Enforcement
+
+`@PreEnforce` and `@PostEnforce` work on any injectable class method, not just controllers.
+This section demonstrates policy enforcement on a `PatientService` class. The controller is
+a thin pass-through -- all authorization happens on the service methods.
+
+**Service:** `src/patient.service.ts`
+**Controller:** `src/service-demo.controller.ts`
+**Handler:** `src/handlers/cap-transfer.handler.ts`
+
+#### 5.1 Basic Service-Level @PreEnforce
+
+The simplest case: a `@PreEnforce` decorator on a service method. The PDP permits
+clinicians to list patients with no constraints attached.
+
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/services/patients | jq
+```
+
+Expected: array of 3 patient records.
+
+```bash
+# Participant: denied
+curl -s -H "Authorization: Bearer $PARTICIPANT_TOKEN" http://localhost:3000/api/services/patients | jq
+```
+
+Expected: 403 Forbidden.
+
+#### 5.2 Argument Manipulation -- Policy-Driven Transfer Limit
+
+This is the key new capability. The `CapTransferHandler` modifies `context.args[0]`
+(the `amount` parameter) before the service method executes. The policy caps transfers
+at 5000 -- the service method never sees the original amount.
+
+**How it works:**
+
+1. Controller receives `POST /api/services/transfer?amount=10000`
+2. Controller calls `patientService.transfer(10000)`
+3. AOP aspect intercepts `transfer` (it has `@PreEnforce`)
+4. Aspect captures `args = [10000]`
+5. PDP returns PERMIT with obligation `{ "type": "capTransferAmount", "maxAmount": 5000, "argIndex": 0 }`
+6. Bundle builds `MethodInvocationContext { request, args: [10000], methodName: "transfer", className: "PatientService" }`
+7. `CapTransferHandler` runs: `10000 > 5000`, so `context.args[0] = 5000`
+8. Aspect calls `method(...invocationContext.args)` -- `transfer(5000)`
+9. Service returns `"Transferred 5000"`
+
+The handler never touches the HTTP request. It modifies the method's arguments directly.
+This pattern works identically for controllers and services.
+
+```bash
+# Over the limit: 10000 gets capped to 5000
+curl -s -X POST -H "Authorization: Bearer $TOKEN" 'http://localhost:3000/api/services/transfer?amount=10000' | jq
+
+# Under the limit: 3000 passes through unchanged
+curl -s -X POST -H "Authorization: Bearer $TOKEN" 'http://localhost:3000/api/services/transfer?amount=3000' | jq
+```
+
+Expected (over limit): `"Transferred 5000"`
+Expected (under limit): `"Transferred 3000"`
+
+#### 5.3 @PostEnforce on Service Method
+
+The service method executes first, then the PDP sees the return value. The policy
+attaches a `filterJsonContent` obligation to blacken the SSN.
+
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/services/patients/P-001 | jq
+```
+
+Expected: `{ "id": "P-001", "name": "Jane Doe", "ssn": "*******6789", ... }`
+
+#### 5.4 Mapping Handler on Service Return Value
+
+The `redactFields` obligation replaces `ssn` and `insurance` with `"[REDACTED]"`.
+
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/services/patients/P-001/summary | jq
+```
+
+Expected: `{ ..., "ssn": "[REDACTED]", "insurance": "[REDACTED]", ... }`
+
+#### 5.5 Combined: Log + Filter on Service Method
+
+Multiple obligations work together: log access and filter results by classification level.
+Only PUBLIC and INTERNAL patients are returned.
+
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" 'http://localhost:3000/api/services/patients/search?q=healthy' | jq
+```
+
+Expected: patients matching "healthy" with classification PUBLIC or INTERNAL only
+(P-002 with CONFIDENTIAL classification is filtered out).
+
+---
+
 ## Constraint Handler Reference
 
 | Interface                                   | Method Signature       | When It Runs                          | Demo Handler                  |
@@ -366,7 +461,7 @@ Expected (participant): `{ "denied": true, "reason": "DENY", "handler": "getAudi
 | `ConsumerConstraintHandlerProvider`         | `(value) => void`      | After method, side-effect on response | `AuditTrailHandler`           |
 | `MappingConstraintHandlerProvider`          | `(value) => any`       | After method, transforms response     | `RedactFieldsHandler`         |
 | `FilterPredicateConstraintHandlerProvider`  | `(element) => boolean` | After method, filters arrays          | `ClassificationFilterHandler` |
-| `MethodInvocationConstraintHandlerProvider` | `(request) => void`    | Before method, modifies request       | `InjectTimestampHandler`      |
+| `MethodInvocationConstraintHandlerProvider` | `(context: MethodInvocationContext) => void` | Before method, modifies request/args | `InjectTimestampHandler`, `CapTransferHandler` |
 | `ErrorHandlerProvider`                      | `(error) => void`      | On error, side-effect                 | `NotifyOnErrorHandler`        |
 | `ErrorMappingConstraintHandlerProvider`     | `(error) => Error`     | On error, transforms error            | `EnrichErrorHandler`          |
 
@@ -394,6 +489,12 @@ Policies are in the `policies/` directory and loaded by the sapl-node PDP:
 | permit-clinician-read-record    | PERMIT              | Clinician reads records (@PostEnforce)                            |
 | permit-clinician-read-audit     | PERMIT              | Clinician reads audit logs (@PostEnforce)                         |
 | permit-read-secret              | PERMIT + obligation | Unknown obligation type (fail-fast demo)                          |
+| permit-clinician-service-list-patients | PERMIT       | Clinician lists patients (service-level)                          |
+| permit-clinician-service-find-patient  | PERMIT + obligation | logAccess on service method                                |
+| permit-clinician-service-patient-detail | PERMIT + obligation | Blackens SSN via filterJsonContent (@PostEnforce)        |
+| permit-clinician-service-patient-summary | PERMIT + obligation | redactFields on ssn + insurance                        |
+| permit-clinician-service-search-patients | PERMIT + obligation | logAccess + filterByClassification                      |
+| permit-clinician-service-transfer | PERMIT + obligation | capTransferAmount + logAccess (argument manipulation)        |
 
 ## Endpoint Reference
 
@@ -416,6 +517,11 @@ Policies are in the `policies/` directory and loaded by the sapl-node PDP:
 | 4.3 | GET /api/constraints/record/:id        | `@PostEnforce` | Advanced       | ctx.returnValue                           |
 | 4.4 | GET /api/constraints/unhandled         | `@PreEnforce`  | Advanced       | Unhandled obligation (fail-fast)          |
 | 4.5 | GET /api/constraints/audit             | `@PostEnforce` | Advanced       | onDeny callback                           |
+| 5.1 | GET /api/services/patients             | `@PreEnforce`  | Service        | Service-level basic enforcement           |
+| 5.2 | POST /api/services/transfer            | `@PreEnforce`  | Service        | Argument manipulation (capTransferAmount) |
+| 5.3 | GET /api/services/patients/:id         | `@PostEnforce` | Service        | @PostEnforce on service method            |
+| 5.4 | GET /api/services/patients/:id/summary | `@PreEnforce`  | Service        | Mapping handler on service return         |
+| 5.5 | GET /api/services/patients/search      | `@PreEnforce`  | Service        | Combined: log + filter                    |
 
 ## Stopping
 

@@ -1,0 +1,5 @@
+policy "permit-clinician-service-list-patients"
+permit
+  action == "service:listPatients";
+  resource == "patients";
+  <jwt.token>.payload.user_role == "CLINICIAN";

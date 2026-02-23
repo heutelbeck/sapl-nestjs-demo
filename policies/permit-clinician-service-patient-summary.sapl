@@ -1,0 +1,10 @@
+policy "permit-clinician-service-patient-summary"
+permit
+  action == "service:getPatientSummary";
+  resource == "patientSummary";
+  <jwt.token>.payload.user_role == "CLINICIAN";
+obligation
+  {
+    "type": "redactFields",
+    "fields": ["ssn", "insurance"]
+  }

@@ -4,12 +4,15 @@ import { SaplModule } from '@sapl/nestjs';
 import { AuthModule } from './auth/auth.module';
 import { AppController } from './app.controller';
 import { ConstraintDemoController } from './constraint-demo.controller';
+import { ServiceDemoController } from './service-demo.controller';
 import { AppService } from './app.service';
+import { PatientService } from './patient.service';
 import { LogAccessHandler } from './handlers/log-access.handler';
 import { AuditTrailHandler } from './handlers/audit-trail.handler';
 import { RedactFieldsHandler } from './handlers/redact-fields.handler';
 import { ClassificationFilterHandler } from './handlers/classification-filter.handler';
 import { InjectTimestampHandler } from './handlers/inject-timestamp.handler';
+import { CapTransferHandler } from './handlers/cap-transfer.handler';
 import { NotifyOnErrorHandler } from './handlers/notify-on-error.handler';
 import { EnrichErrorHandler } from './handlers/enrich-error.handler';
 
@@ -31,14 +34,16 @@ import { EnrichErrorHandler } from './handlers/enrich-error.handler';
       inject: [ConfigService],
     }),
   ],
-  controllers: [AppController, ConstraintDemoController],
+  controllers: [AppController, ConstraintDemoController, ServiceDemoController],
   providers: [
     AppService,
+    PatientService,
     LogAccessHandler,
     AuditTrailHandler,
     RedactFieldsHandler,
     ClassificationFilterHandler,
     InjectTimestampHandler,
+    CapTransferHandler,
     NotifyOnErrorHandler,
     EnrichErrorHandler,
   ],

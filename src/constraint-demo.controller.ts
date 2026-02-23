@@ -341,7 +341,7 @@ export class ConstraintDemoController {
    * the SubscriptionContext and the PDP decision.
    *
    * Clinicians are permitted (permit-clinician-read-audit policy).
-   * Participants are denied (no matching permit policy, default DENY).
+   * Participants are denied (no matching permit policy, default DENY).  3. The user wants to demonstrate that decorators work on service classes (not just controllers), which is the whole reason we migrated to AOP.
    *
    * When denied, the onDeny callback returns a JSON body with the decision
    * details instead of a 403 status code.
