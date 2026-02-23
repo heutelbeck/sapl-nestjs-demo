@@ -1,0 +1,7 @@
+flowchart TD
+    A["HTTP Request"] --> B["NestJS Controller / Service"]
+    B --> C["AOP Aspect<br/>@PreEnforce / @PostEnforce / @EnforceTillDenied / ..."]
+    C --> D["SAPL PDP<br/>Policies (policies/*.sapl)"]
+    D --> E["Decision<br/>PERMIT / DENY + obligations + advice + resource"]
+    E --> F["Constraint Handler Bundle<br/>registered handlers matched by type"]
+    F --> G["Response<br/>filtered / transformed / replaced / denied"]

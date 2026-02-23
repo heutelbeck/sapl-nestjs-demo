@@ -4,27 +4,7 @@ Demo application for [`@sapl/nestjs`](https://github.com/heutelbeck/sapl-nestjs)
 
 ## Architecture
 
-```
-HTTP Request
-    |
-    v
-NestJS Controller / Service
-    |
-    v
-AOP Aspect (@PreEnforce / @PostEnforce / @EnforceTillDenied / ...)
-    |
-    v
-SAPL PDP  --->  Policies (policies/*.sapl)
-    |
-    v
-Decision: PERMIT / DENY + obligations + advice + resource
-    |
-    v
-Constraint Handler Bundle (registered handlers matched by "type")
-    |
-    v
-Response (filtered / transformed / replaced / denied)
-```
+![Architecture](https://raw.githubusercontent.com/heutelbeck/sapl-nestjs-demo/main/docs/architecture.svg)
 
 ## Quick Start
 
