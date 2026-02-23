@@ -4,7 +4,6 @@ import {
   Get,
   Logger,
   Param,
-  Request,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
@@ -24,8 +23,6 @@ function bearerToken(ctx: SubscriptionContext) {
  *   2. @PreEnforce decorator (declarative, before method execution)
  *   3. @PreEnforce with onDeny callback (custom deny handling)
  */
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('api')
 export class AppController {
   private readonly logger = new Logger(AppController.name);
@@ -47,20 +44,14 @@ export class AppController {
    * are interpreted, or when you need to handle obligations/resource
    * replacement in a custom way.
    *
-   * The policy permit-read-hello permits any authenticated user.
+   * The policy permit-read-hello permits any request.
    */
   @Get('hello')
-  async getHello(@Request() req) {
-    const user = req.user;
-    this.logger.log(
-      `Manual PDP: ${user.preferred_username} (${user.user_role})`,
-    );
-
+  async getHello() {
     const decision = await this.pdpService.decideOnce({
-      subject: user,
+      subject: 'anonymous',
       action: 'read',
       resource: 'hello',
-      secrets: { jwt: req.headers?.authorization?.split(' ')[1] },
     });
 
     this.logger.log(`PDP decision: ${JSON.stringify(decision)}`);
@@ -75,7 +66,7 @@ export class AppController {
   }
 
   /**
-   * @PreEnforce with Custom Resource Builder
+   * @PreEnforce with Custom Resource Builder (JWT required)
    *
    * The @PreEnforce decorator automates the PDP call and decision enforcement.
    * Before the controller method runs:
@@ -90,6 +81,8 @@ export class AppController {
    *
    * clinician1 (pilotId=1) can access /api/exportData/1/* but not /api/exportData/2/*
    */
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @PreEnforce({
     action: 'exportData',
     resource: (ctx) => ({
@@ -108,7 +101,7 @@ export class AppController {
   }
 
   /**
-   * @PreEnforce with Custom onDeny Handler
+   * @PreEnforce with Custom onDeny Handler (JWT required)
    *
    * When the PDP denies access, the default behavior is to throw
    * ForbiddenException (HTTP 403). The onDeny callback overrides this
@@ -121,6 +114,8 @@ export class AppController {
    * This is useful for SPAs or APIs that need machine-readable deny
    * responses rather than HTTP error codes.
    */
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
   @PreEnforce({
     action: 'exportData',
     resource: (ctx) => ({
@@ -128,7 +123,7 @@ export class AppController {
       sequenceId: ctx.params.sequenceId,
     }),
     secrets: bearerToken,
-    onDeny: handleExportDeny,
+    onDeny: AppController.handleExportDeny,
   })
   @Get('exportData2/:pilotId/:sequenceId')
   getExportData2(
@@ -138,16 +133,16 @@ export class AppController {
     this.logger.log(`exportData2: pilot=${pilotId} seq=${sequenceId}`);
     return this.appService.getExportData(pilotId, sequenceId);
   }
-}
 
-function handleExportDeny(ctx: SubscriptionContext, decision: any) {
-  return {
-    error: 'access_denied',
-    decision: decision.decision,
-    user: ctx.request.user?.preferred_username ?? 'unknown',
-    requested: {
-      pilotId: ctx.params.pilotId,
-      sequenceId: ctx.params.sequenceId,
-    },
-  };
+  private static handleExportDeny(ctx: SubscriptionContext, decision: any) {
+    return {
+      error: 'access_denied',
+      decision: decision.decision,
+      user: ctx.request.user?.preferred_username ?? 'unknown',
+      requested: {
+        pilotId: ctx.params.pilotId,
+        sequenceId: ctx.params.sequenceId,
+      },
+    };
+  }
 }

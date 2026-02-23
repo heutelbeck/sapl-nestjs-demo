@@ -1,8 +1,7 @@
-policy "permit-clinician-audited"
+policy "permit-audited"
 permit
   action == "readAudited";
   resource == "audited";
-  <jwt.token>.payload.user_role == "CLINICIAN";
 obligation
   {
     "type": "auditTrail",

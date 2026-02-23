@@ -1,8 +1,7 @@
-policy "permit-clinician-timestamped"
+policy "permit-timestamped"
 permit
   action == "readTimestamped";
   resource == "timestamped";
-  <jwt.token>.payload.user_role == "CLINICIAN";
 obligation
   {
     "type": "injectTimestamp"

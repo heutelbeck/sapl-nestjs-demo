@@ -1,8 +1,7 @@
-policy "permit-clinician-documents"
+policy "permit-documents"
 permit
   action == "readDocuments";
   resource == "documents";
-  <jwt.token>.payload.user_role == "CLINICIAN";
 obligation
   {
     "type": "filterByClassification",

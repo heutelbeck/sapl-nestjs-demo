@@ -12,7 +12,7 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('SAPL NestJS Demo')
-    .setDescription('Demo API with Keycloak auth and SAPL policy enforcement')
+    .setDescription('Demo API with SAPL policy enforcement (JWT required only for export endpoints)')
     .setVersion('1.0')
     .addBearerAuth()
     .build();

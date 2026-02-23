@@ -1,12 +1,6 @@
-import { Controller, Get, Logger, Param, Request, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Logger, Param, Request } from '@nestjs/common';
 import { PreEnforce, PostEnforce, SubscriptionContext } from '@sapl/nestjs';
-import { JwtAuthGuard } from './auth/jwt-auth.guard';
 import { AuditTrailHandler } from './handlers/audit-trail.handler';
-
-function bearerToken(ctx: SubscriptionContext) {
-  return { jwt: ctx.request.headers?.authorization?.split(' ')[1] };
-}
 
 /**
  * Demonstrates all constraint handler types supported by @sapl/nestjs.
@@ -16,22 +10,12 @@ function bearerToken(ctx: SubscriptionContext) {
  * handlers via the @SaplConstraintHandler decorator and builds a
  * ConstraintHandlerBundle that enforces all constraints.
  *
- * Sections:
- *   1. Built-in Content Filtering   (filterJsonContent)
- *   2. Custom Constraint Handlers   (one per provider interface)
- *   3. Advanced Patterns            (resource replacement, advice, fail-fast)
  */
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('api/constraints')
 export class ConstraintDemoController {
   private readonly logger = new Logger(ConstraintDemoController.name);
 
   constructor(private readonly auditTrailHandler: AuditTrailHandler) {}
-
-  // ---------------------------------------------------------------------------
-  // Section 1: Built-in Content Filtering (filterJsonContent)
-  // ---------------------------------------------------------------------------
 
   /**
    * 1a. Content Filter -- blacken
@@ -44,7 +28,7 @@ export class ConstraintDemoController {
    *
    * Expected: { name: "Jane Doe", ssn: "XXXXX6789", email: "...", diagnosis: "..." }
    */
-  @PreEnforce({ action: 'readPatient', resource: 'patient', secrets: bearerToken })
+  @PreEnforce({ action: 'readPatient', resource: 'patient' })
   @Get('patient')
   getPatient() {
     return {
@@ -65,7 +49,7 @@ export class ConstraintDemoController {
    *
    * Expected: ssn masked, internalNotes absent, email replaced with "redacted@example.com"
    */
-  @PreEnforce({ action: 'readPatientFull', resource: 'patientFull', secrets: bearerToken })
+  @PreEnforce({ action: 'readPatientFull', resource: 'patientFull' })
   @Get('patient-full')
   getPatientFull() {
     return {
@@ -76,10 +60,6 @@ export class ConstraintDemoController {
       internalNotes: 'Follow-up scheduled for next week',
     };
   }
-
-  // ---------------------------------------------------------------------------
-  // Section 2: Custom Constraint Handlers (one per provider interface)
-  // ---------------------------------------------------------------------------
 
   /**
    * 2a. RunnableConstraintHandlerProvider -- LogAccessHandler
@@ -92,7 +72,7 @@ export class ConstraintDemoController {
    *
    * Watch the server console for: [LogAccessHandler] [POLICY] Patient data accessed by clinician
    */
-  @PreEnforce({ action: 'readLogged', resource: 'logged', secrets: bearerToken })
+  @PreEnforce({ action: 'readLogged', resource: 'logged' })
   @Get('logged')
   getLogged() {
     return {
@@ -114,7 +94,7 @@ export class ConstraintDemoController {
    * Call this endpoint, then call GET /api/constraints/audit-log to see
    * what was recorded.
    */
-  @PreEnforce({ action: 'readAudited', resource: 'audited', secrets: bearerToken })
+  @PreEnforce({ action: 'readAudited', resource: 'audited' })
   @Get('audited')
   getAudited() {
     return {
@@ -144,7 +124,7 @@ export class ConstraintDemoController {
    *
    * Expected: ssn and creditCard become "[REDACTED]", other fields unchanged.
    */
-  @PreEnforce({ action: 'readRedacted', resource: 'redacted', secrets: bearerToken })
+  @PreEnforce({ action: 'readRedacted', resource: 'redacted' })
   @Get('redacted')
   getRedacted() {
     return {
@@ -170,7 +150,7 @@ export class ConstraintDemoController {
    * Expected: only PUBLIC and INTERNAL documents are returned; CONFIDENTIAL
    * and SECRET documents are filtered out.
    */
-  @PreEnforce({ action: 'readDocuments', resource: 'documents', secrets: bearerToken })
+  @PreEnforce({ action: 'readDocuments', resource: 'documents' })
   @Get('documents')
   getDocuments() {
     return [
@@ -197,7 +177,7 @@ export class ConstraintDemoController {
    *
    * Expected: response includes policyTimestamp set by the constraint handler.
    */
-  @PreEnforce({ action: 'readTimestamped', resource: 'timestamped', secrets: bearerToken })
+  @PreEnforce({ action: 'readTimestamped', resource: 'timestamped' })
   @Get('timestamped')
   getTimestamped(@Request() req) {
     return {
@@ -224,15 +204,11 @@ export class ConstraintDemoController {
    * Watch the server console for both [ERROR-NOTIFY] and [ERROR-ENRICH] logs.
    * Expected: 500 with enriched error message including the support URL.
    */
-  @PreEnforce({ action: 'readErrorDemo', resource: 'errorDemo', secrets: bearerToken })
+  @PreEnforce({ action: 'readErrorDemo', resource: 'errorDemo' })
   @Get('error-demo')
   getErrorDemo() {
     throw new Error('Simulated backend failure');
   }
-
-  // ---------------------------------------------------------------------------
-  // Section 3: Advanced Patterns
-  // ---------------------------------------------------------------------------
 
   /**
    * 3a. Resource Replacement
@@ -251,7 +227,7 @@ export class ConstraintDemoController {
    * Expected: the response contains the PDP-generated object, NOT the
    * controller's return value.
    */
-  @PreEnforce({ action: 'readReplaced', resource: 'replaced', secrets: bearerToken })
+  @PreEnforce({ action: 'readReplaced', resource: 'replaced' })
   @Get('resource-replaced')
   getResourceReplaced() {
     return {
@@ -280,7 +256,7 @@ export class ConstraintDemoController {
    * Watch the server console: you'll see the logAccess log but no error for
    * the unhandled advice.
    */
-  @PreEnforce({ action: 'readAdvised', resource: 'advised', secrets: bearerToken })
+  @PreEnforce({ action: 'readAdvised', resource: 'advised' })
   @Get('advised')
   getAdvised() {
     return {
@@ -297,7 +273,7 @@ export class ConstraintDemoController {
    * resource callback. This allows policies to make decisions based on
    * the actual data being returned.
    *
-   * The policy permit-clinician-read-record permits clinicians to read records.
+   * The policy permit-read-record permits reading records.
    */
   @PostEnforce({
     action: 'readRecord',
@@ -305,7 +281,6 @@ export class ConstraintDemoController {
       type: 'record',
       data: ctx.returnValue,
     }),
-    secrets: bearerToken,
   })
   @Get('record/:id')
   getRecord(@Param('id') id: string) {
@@ -327,7 +302,7 @@ export class ConstraintDemoController {
    *
    * Expected: 403 Forbidden, regardless of the PERMIT decision.
    */
-  @PreEnforce({ action: 'readSecret', resource: 'secret', secrets: bearerToken })
+  @PreEnforce({ action: 'readSecret', resource: 'secret' })
   @Get('unhandled')
   getUnhandled() {
     return { data: 'you should not see this' };
@@ -340,17 +315,13 @@ export class ConstraintDemoController {
    * instead of throwing ForbiddenException. The onDeny callback receives
    * the SubscriptionContext and the PDP decision.
    *
-   * Clinicians are permitted (permit-clinician-read-audit policy).
-   * Participants are denied (no matching permit policy, default DENY).  3. The user wants to demonstrate that decorators work on service classes (not just controllers), which is the whole reason we migrated to AOP.
-   *
    * When denied, the onDeny callback returns a JSON body with the decision
    * details instead of a 403 status code.
    */
   @PostEnforce({
     action: 'readAudit',
     resource: 'audit',
-    secrets: bearerToken,
-    onDeny: (ctx, decision) => ({
+    onDeny: (ctx: SubscriptionContext, decision) => ({
       denied: true,
       reason: decision.decision,
       handler: ctx.handler,

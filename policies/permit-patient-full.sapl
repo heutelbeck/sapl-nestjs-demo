@@ -1,8 +1,7 @@
-policy "permit-clinician-patient-full"
+policy "permit-patient-full"
 permit
   action == "readPatientFull";
   resource == "patientFull";
-  <jwt.token>.payload.user_role == "CLINICIAN";
 obligation
   {
     "type": "filterJsonContent",

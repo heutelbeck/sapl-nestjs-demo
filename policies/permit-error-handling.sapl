@@ -1,8 +1,7 @@
-policy "permit-clinician-error-handling"
+policy "permit-error-handling"
 permit
   action == "readErrorDemo";
   resource == "errorDemo";
-  <jwt.token>.payload.user_role == "CLINICIAN";
 obligation
   {
     "type": "notifyOnError"

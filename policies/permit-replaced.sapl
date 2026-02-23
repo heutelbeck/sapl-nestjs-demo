@@ -1,8 +1,7 @@
-policy "permit-clinician-replaced"
+policy "permit-replaced"
 permit
   action == "readReplaced";
   resource == "replaced";
-  <jwt.token>.payload.user_role == "CLINICIAN";
 transform
   {
     "message": "This resource was replaced by the PDP",

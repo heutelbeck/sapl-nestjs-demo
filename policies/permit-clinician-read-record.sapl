@@ -1,4 +1,0 @@
-policy "permit-clinician-read-record"
-permit
-  action == "readRecord";
-  <jwt.token>.payload.user_role == "CLINICIAN";

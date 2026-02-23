@@ -1,6 +1,4 @@
-import { Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth } from '@nestjs/swagger';
-import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { PatientService } from './patient.service';
 
 /**
@@ -10,8 +8,6 @@ import { PatientService } from './patient.service';
  * This demonstrates that SAPL decorators work on any injectable class,
  * not just controllers.
  */
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
 @Controller('api/services')
 export class ServiceDemoController {
   constructor(private readonly patientService: PatientService) {}

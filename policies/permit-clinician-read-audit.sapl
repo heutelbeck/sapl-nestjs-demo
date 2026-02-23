@@ -1,5 +1,0 @@
-policy "permit-clinician-read-audit"
-permit
-  action == "readAudit";
-  resource == "audit";
-  <jwt.token>.payload.user_role == "CLINICIAN";

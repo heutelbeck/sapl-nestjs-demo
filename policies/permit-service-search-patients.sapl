@@ -1,8 +1,7 @@
-policy "permit-clinician-service-search-patients"
+policy "permit-service-search-patients"
 permit
   action == "service:searchPatients";
   resource == "patientSearch";
-  <jwt.token>.payload.user_role == "CLINICIAN";
 obligation
   {
     "type": "logAccess",

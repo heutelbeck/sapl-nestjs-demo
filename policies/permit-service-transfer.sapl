@@ -1,8 +1,7 @@
-policy "permit-clinician-service-transfer"
+policy "permit-service-transfer"
 permit
   action == "service:transfer";
   resource == "account";
-  <jwt.token>.payload.user_role == "CLINICIAN";
 obligation
   {
     "type": "capTransferAmount",

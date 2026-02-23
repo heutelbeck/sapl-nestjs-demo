@@ -1,8 +1,7 @@
-policy "permit-clinician-service-patient-detail"
+policy "permit-service-patient-detail"
 permit
   action == "service:getPatientDetail";
   resource.type == "patientDetail";
-  <jwt.token>.payload.user_role == "CLINICIAN";
 obligation
   {
     "type": "filterJsonContent",

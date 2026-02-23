@@ -1,8 +1,7 @@
-policy "permit-clinician-logged"
+policy "permit-logged"
 permit
   action == "readLogged";
   resource == "logged";
-  <jwt.token>.payload.user_role == "CLINICIAN";
 obligation
   {
     "type": "logAccess",

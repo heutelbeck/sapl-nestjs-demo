@@ -1,8 +1,7 @@
-policy "permit-clinician-advised"
+policy "permit-advised"
 permit
   action == "readAdvised";
   resource == "advised";
-  <jwt.token>.payload.user_role == "CLINICIAN";
 advice
   {
     "type": "logAccess",

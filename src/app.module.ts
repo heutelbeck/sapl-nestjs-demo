@@ -15,6 +15,9 @@ import { InjectTimestampHandler } from './handlers/inject-timestamp.handler';
 import { CapTransferHandler } from './handlers/cap-transfer.handler';
 import { NotifyOnErrorHandler } from './handlers/notify-on-error.handler';
 import { EnrichErrorHandler } from './handlers/enrich-error.handler';
+import { StreamingDemoController } from './streaming-demo.controller';
+import { StreamingDemoService } from './streaming-demo.service';
+import { LogStreamEventHandler } from './handlers/log-stream-event.handler';
 
 @Module({
   imports: [
@@ -34,7 +37,7 @@ import { EnrichErrorHandler } from './handlers/enrich-error.handler';
       inject: [ConfigService],
     }),
   ],
-  controllers: [AppController, ConstraintDemoController, ServiceDemoController],
+  controllers: [AppController, ConstraintDemoController, ServiceDemoController, StreamingDemoController],
   providers: [
     AppService,
     PatientService,
@@ -46,6 +49,8 @@ import { EnrichErrorHandler } from './handlers/enrich-error.handler';
     CapTransferHandler,
     NotifyOnErrorHandler,
     EnrichErrorHandler,
+    StreamingDemoService,
+    LogStreamEventHandler,
   ],
 })
 export class AppModule {}
