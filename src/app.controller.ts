@@ -12,7 +12,9 @@ import { AppService } from './app.service';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
 
 function bearerToken(ctx: SubscriptionContext) {
-  return { jwt: ctx.request.headers?.authorization?.split(' ')[1] };
+  const auth = ctx.request.headers?.authorization;
+  const token = typeof auth === 'string' ? auth.split(' ')[1] : undefined;
+  return { jwt: token };
 }
 
 /**
@@ -138,7 +140,7 @@ export class AppController {
     return {
       error: 'access_denied',
       decision: decision.decision,
-      user: ctx.request.user?.preferred_username ?? 'unknown',
+      user: (ctx.request.user as any)?.preferred_username ?? 'unknown',
       requested: {
         pilotId: ctx.params.pilotId,
         sequenceId: ctx.params.sequenceId,
