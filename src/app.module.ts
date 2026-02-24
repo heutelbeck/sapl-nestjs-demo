@@ -33,6 +33,7 @@ import { LogStreamEventHandler } from './handlers/log-stream-event.handler';
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({
         baseUrl: config.get('SAPL_PDP_URL', 'http://localhost:8443'),
+        allowInsecureConnections: true,
       }),
       inject: [ConfigService],
     }),
