@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Observable, interval, map } from 'rxjs';
 import {
   EnforceTillDenied,
@@ -89,21 +89,18 @@ export class StreamingDemoService {
   }
 
   /**
-   * @EnforceRecoverableIfDenied with callback-driven termination.
+   * @EnforceRecoverableIfDenied with a deny callback.
    *
-   * On DENY: onStreamDeny injects a final GOODBYE event, then terminates
-   * the stream via emitter.error(). This overrides the default behavior
-   * (which would keep the stream alive). The client receives the GOODBYE
-   * event followed by the error.
+   * On DENY: onStreamDeny injects an ACCESS_SUSPENDED event into the stream.
+   * The stream stays alive and resumes forwarding on re-PERMIT.
    */
   @EnforceRecoverableIfDenied({
     action: 'stream:heartbeat',
     resource: 'heartbeat',
     onStreamDeny: (_decision, emitter) => {
       emitter.next({
-        data: JSON.stringify({ type: 'GOODBYE', message: 'Stream terminated by callback' }),
+        data: JSON.stringify({ type: 'ACCESS_SUSPENDED', message: 'Stream suspended by policy' }),
       });
-      emitter.error(new ForbiddenException('Callback chose to terminate stream'));
     },
   })
   heartbeatTerminatedByCallback(): Observable<any> {
@@ -115,27 +112,14 @@ export class StreamingDemoService {
   }
 
   /**
-   * @EnforceDropWhileDenied with deny/recover callbacks.
+   * @EnforceDropWhileDenied silently drops data during DENY periods.
    *
-   * On DENY: onStreamDeny injects an ACCESS_SUSPENDED event.
-   * On re-PERMIT: onStreamRecover injects an ACCESS_RESTORED event.
-   * Between transitions, data is silently dropped (same as plain
-   * @EnforceDropWhileDenied). The callbacks add in-band signaling
-   * without changing the drop-while-denied core behavior.
+   * No callbacks -- data is simply not forwarded while denied.
+   * The stream stays alive and resumes forwarding on re-PERMIT.
    */
   @EnforceDropWhileDenied({
     action: 'stream:heartbeat',
     resource: 'heartbeat',
-    onStreamDeny: (_decision, emitter) => {
-      emitter.next({
-        data: JSON.stringify({ type: 'ACCESS_SUSPENDED', message: 'Events paused by policy' }),
-      });
-    },
-    onStreamRecover: (_decision, emitter) => {
-      emitter.next({
-        data: JSON.stringify({ type: 'ACCESS_RESTORED', message: 'Events resumed' }),
-      });
-    },
   })
   heartbeatDropWithCallbacks(): Observable<any> {
     return interval(2000).pipe(
