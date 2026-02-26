@@ -38,7 +38,12 @@ import { LogStreamEventHandler } from './handlers/log-stream-event.handler';
       inject: [ConfigService],
     }),
   ],
-  controllers: [AppController, ConstraintDemoController, ServiceDemoController, StreamingDemoController],
+  controllers: [
+    AppController,
+    ConstraintDemoController,
+    ServiceDemoController,
+    StreamingDemoController,
+  ],
   providers: [
     AppService,
     PatientService,

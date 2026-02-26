@@ -23,9 +23,7 @@ import {
  */
 @Injectable()
 @SaplConstraintHandler('methodInvocation')
-export class InjectTimestampHandler
-  implements MethodInvocationConstraintHandlerProvider
-{
+export class InjectTimestampHandler implements MethodInvocationConstraintHandlerProvider {
   private readonly logger = new Logger(InjectTimestampHandler.name);
 
   isResponsible(constraint: any): boolean {

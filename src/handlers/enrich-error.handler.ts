@@ -21,9 +21,7 @@ import {
  */
 @Injectable()
 @SaplConstraintHandler('errorMapping')
-export class EnrichErrorHandler
-  implements ErrorMappingConstraintHandlerProvider
-{
+export class EnrichErrorHandler implements ErrorMappingConstraintHandlerProvider {
   private readonly logger = new Logger(EnrichErrorHandler.name);
 
   isResponsible(constraint: any): boolean {
@@ -40,9 +38,7 @@ export class EnrichErrorHandler
       this.logger.log(
         `[ERROR-ENRICH] Enriching error with support URL: ${supportUrl}`,
       );
-      const enriched = new Error(
-        `${error.message} | Support: ${supportUrl}`,
-      );
+      const enriched = new Error(`${error.message} | Support: ${supportUrl}`);
       enriched.name = error.name;
       enriched.stack = error.stack;
       return enriched;

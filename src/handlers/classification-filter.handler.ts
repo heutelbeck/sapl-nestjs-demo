@@ -26,9 +26,7 @@ const CLASSIFICATION_LEVELS: Record<string, number> = {
  */
 @Injectable()
 @SaplConstraintHandler('filterPredicate')
-export class ClassificationFilterHandler
-  implements FilterPredicateConstraintHandlerProvider
-{
+export class ClassificationFilterHandler implements FilterPredicateConstraintHandlerProvider {
   private readonly logger = new Logger(ClassificationFilterHandler.name);
 
   isResponsible(constraint: any): boolean {

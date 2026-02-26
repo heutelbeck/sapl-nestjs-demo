@@ -29,7 +29,10 @@ export class StreamingDemoService {
     resource: 'heartbeat',
     onStreamDeny: (_decision, subscriber) => {
       subscriber.next({
-        data: JSON.stringify({ type: 'ACCESS_DENIED', message: 'Stream terminated by policy' }),
+        data: JSON.stringify({
+          type: 'ACCESS_DENIED',
+          message: 'Stream terminated by policy',
+        }),
       });
     },
   })
@@ -71,12 +74,18 @@ export class StreamingDemoService {
     resource: 'heartbeat',
     onStreamDeny: (_decision, subscriber) => {
       subscriber.next({
-        data: JSON.stringify({ type: 'ACCESS_SUSPENDED', message: 'Waiting for re-authorization' }),
+        data: JSON.stringify({
+          type: 'ACCESS_SUSPENDED',
+          message: 'Waiting for re-authorization',
+        }),
       });
     },
     onStreamRecover: (_decision, subscriber) => {
       subscriber.next({
-        data: JSON.stringify({ type: 'ACCESS_RESTORED', message: 'Authorization restored' }),
+        data: JSON.stringify({
+          type: 'ACCESS_RESTORED',
+          message: 'Authorization restored',
+        }),
       });
     },
   })
@@ -99,7 +108,10 @@ export class StreamingDemoService {
     resource: 'heartbeat',
     onStreamDeny: (_decision, emitter) => {
       emitter.next({
-        data: JSON.stringify({ type: 'ACCESS_SUSPENDED', message: 'Stream suspended by policy' }),
+        data: JSON.stringify({
+          type: 'ACCESS_SUSPENDED',
+          message: 'Stream suspended by policy',
+        }),
       });
     },
   })

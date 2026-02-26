@@ -22,7 +22,11 @@ import {
 @SaplConstraintHandler('consumer')
 export class AuditTrailHandler implements ConsumerConstraintHandlerProvider {
   private readonly logger = new Logger(AuditTrailHandler.name);
-  private readonly auditLog: Array<{ timestamp: string; action: string; value: any }> = [];
+  private readonly auditLog: Array<{
+    timestamp: string;
+    action: string;
+    value: any;
+  }> = [];
 
   isResponsible(constraint: any): boolean {
     return constraint?.type === 'auditTrail';

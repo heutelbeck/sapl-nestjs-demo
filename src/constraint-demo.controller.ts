@@ -132,7 +132,7 @@ export class ConstraintDemoController {
       ssn: '987-65-4321',
       creditCard: '4111-1111-1111-1111',
       email: 'john@example.com',
-      balance: 1500.00,
+      balance: 1500.0,
     };
   }
 

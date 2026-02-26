@@ -12,9 +12,27 @@ export interface PatientRecord {
 @Injectable()
 export class PatientService {
   private readonly patients: PatientRecord[] = [
-    { id: 'P-001', name: 'Jane Doe', ssn: '123-45-6789', diagnosis: 'healthy', classification: 'INTERNAL' },
-    { id: 'P-002', name: 'John Smith', ssn: '987-65-4321', diagnosis: 'checkup', classification: 'CONFIDENTIAL' },
-    { id: 'P-003', name: 'Alice Johnson', ssn: '555-12-3456', diagnosis: 'healthy', classification: 'PUBLIC' },
+    {
+      id: 'P-001',
+      name: 'Jane Doe',
+      ssn: '123-45-6789',
+      diagnosis: 'healthy',
+      classification: 'INTERNAL',
+    },
+    {
+      id: 'P-002',
+      name: 'John Smith',
+      ssn: '987-65-4321',
+      diagnosis: 'checkup',
+      classification: 'CONFIDENTIAL',
+    },
+    {
+      id: 'P-003',
+      name: 'Alice Johnson',
+      ssn: '555-12-3456',
+      diagnosis: 'healthy',
+      classification: 'PUBLIC',
+    },
   ];
 
   @PreEnforce({ action: 'service:listPatients', resource: 'patients' })
@@ -24,7 +42,9 @@ export class PatientService {
 
   @PreEnforce({ action: 'service:findPatient', resource: 'patient' })
   findPatient(name: string): PatientRecord[] {
-    return this.patients.filter(p => p.name.toLowerCase().includes(name.toLowerCase()));
+    return this.patients.filter((p) =>
+      p.name.toLowerCase().includes(name.toLowerCase()),
+    );
   }
 
   @PostEnforce({
@@ -32,20 +52,24 @@ export class PatientService {
     resource: (ctx) => ({ type: 'patientDetail', data: ctx.returnValue }),
   })
   getPatientDetail(id: string): PatientRecord | undefined {
-    return this.patients.find(p => p.id === id);
+    return this.patients.find((p) => p.id === id);
   }
 
-  @PreEnforce({ action: 'service:getPatientSummary', resource: 'patientSummary' })
+  @PreEnforce({
+    action: 'service:getPatientSummary',
+    resource: 'patientSummary',
+  })
   getPatientSummary(id: string): any {
-    const patient = this.patients.find(p => p.id === id);
+    const patient = this.patients.find((p) => p.id === id);
     return patient ? { ...patient, insurance: 'INS-9876-XYZ' } : undefined;
   }
 
   @PreEnforce({ action: 'service:searchPatients', resource: 'patientSearch' })
   searchPatients(query: string): PatientRecord[] {
-    return this.patients.filter(p =>
-      p.name.toLowerCase().includes(query.toLowerCase()) ||
-      p.diagnosis.toLowerCase().includes(query.toLowerCase()),
+    return this.patients.filter(
+      (p) =>
+        p.name.toLowerCase().includes(query.toLowerCase()) ||
+        p.diagnosis.toLowerCase().includes(query.toLowerCase()),
     );
   }
 

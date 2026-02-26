@@ -1,8 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  ErrorHandlerProvider,
-  SaplConstraintHandler,
-} from '@sapl/nestjs';
+import { ErrorHandlerProvider, SaplConstraintHandler } from '@sapl/nestjs';
 
 /**
  * Demonstrates: ErrorHandlerProvider

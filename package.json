@@ -23,7 +23,7 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/swagger": "^11.2.6",
-    "@sapl/nestjs": "^1.0.1",
+    "@sapl/nestjs": "^1.0.2",
     "@toss/nestjs-aop": "^2.1.7",
     "jwks-rsa": "^3.2.2",
     "nestjs-cls": "^6.2.0",

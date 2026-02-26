@@ -18,9 +18,7 @@ import {
  */
 @Injectable()
 @SaplConstraintHandler('methodInvocation')
-export class CapTransferHandler
-  implements MethodInvocationConstraintHandlerProvider
-{
+export class CapTransferHandler implements MethodInvocationConstraintHandlerProvider {
   private readonly logger = new Logger(CapTransferHandler.name);
 
   isResponsible(constraint: any): boolean {
@@ -34,7 +32,9 @@ export class CapTransferHandler
       const requested = Number(context.args[argIndex]);
       if (requested > maxAmount) {
         context.args[argIndex] = maxAmount;
-        this.logger.log(`[CAP] ${context.className}.${context.methodName} args[${argIndex}]: ${requested} -> ${maxAmount} (limit: ${maxAmount})`);
+        this.logger.log(
+          `[CAP] ${context.className}.${context.methodName} args[${argIndex}]: ${requested} -> ${maxAmount} (limit: ${maxAmount})`,
+        );
       }
     };
   }
