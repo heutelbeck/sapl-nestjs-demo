@@ -111,6 +111,12 @@ curl -N http://localhost:3000/api/streaming/heartbeat/drop-while-denied
 
 # Sends ACCESS_SUSPENDED / ACCESS_RESTORED signals on transitions
 curl -N http://localhost:3000/api/streaming/heartbeat/recoverable
+
+# Callback-driven termination: sends GOODBYE event then terminates
+curl -N http://localhost:3000/api/streaming/heartbeat/terminated-by-callback
+
+# Drop-while-denied with in-band suspend/restore signals
+curl -N http://localhost:3000/api/streaming/heartbeat/drop-with-callbacks
 ```
 
 ### Export Data (JWT Required)
@@ -174,6 +180,8 @@ curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/exportData2/
 | SSE /api/streaming/heartbeat/till-denied | `@EnforceTillDenied` | None | Terminal denial |
 | SSE /api/streaming/heartbeat/drop-while-denied | `@EnforceDropWhileDenied` | None | Silent drops during DENY |
 | SSE /api/streaming/heartbeat/recoverable | `@EnforceRecoverableIfDenied` | None | In-band deny/recover signals |
+| SSE /api/streaming/heartbeat/terminated-by-callback | `@EnforceRecoverableIfDenied` | None | Callback-driven termination |
+| SSE /api/streaming/heartbeat/drop-with-callbacks | `@EnforceDropWhileDenied` | None | Drop with in-band signals |
 
 ### Constraint Handler Reference
 

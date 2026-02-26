@@ -40,4 +40,23 @@ export class StreamingDemoController {
   heartbeatRecoverable(): Observable<any> {
     return this.streamingService.heartbeatRecoverable();
   }
+
+  /**
+   * Stream where the onStreamDeny callback terminates the stream with an error
+   * after injecting a final GOODBYE event. Demonstrates callback-driven termination.
+   * Connect with: curl -N http://localhost:3000/api/streaming/heartbeat/terminated-by-callback
+   */
+  @Sse('heartbeat/terminated-by-callback')
+  heartbeatTerminatedByCallback(): Observable<any> {
+    return this.streamingService.heartbeatTerminatedByCallback();
+  }
+
+  /**
+   * Drop-while-denied stream with in-band suspend/restore signals via callbacks.
+   * Connect with: curl -N http://localhost:3000/api/streaming/heartbeat/drop-with-callbacks
+   */
+  @Sse('heartbeat/drop-with-callbacks')
+  heartbeatDropWithCallbacks(): Observable<any> {
+    return this.streamingService.heartbeatDropWithCallbacks();
+  }
 }

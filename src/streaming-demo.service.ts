@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { Observable, interval, map } from 'rxjs';
 import {
   EnforceTillDenied,
@@ -81,6 +81,63 @@ export class StreamingDemoService {
     },
   })
   heartbeatRecoverable(): Observable<any> {
+    return interval(2000).pipe(
+      map((i) => ({
+        data: JSON.stringify({ seq: i, ts: new Date().toISOString() }),
+      })),
+    );
+  }
+
+  /**
+   * @EnforceRecoverableIfDenied with callback-driven termination.
+   *
+   * On DENY: onStreamDeny injects a final GOODBYE event, then terminates
+   * the stream via emitter.error(). This overrides the default behavior
+   * (which would keep the stream alive). The client receives the GOODBYE
+   * event followed by the error.
+   */
+  @EnforceRecoverableIfDenied({
+    action: 'stream:heartbeat',
+    resource: 'heartbeat',
+    onStreamDeny: (_decision, emitter) => {
+      emitter.next({
+        data: JSON.stringify({ type: 'GOODBYE', message: 'Stream terminated by callback' }),
+      });
+      emitter.error(new ForbiddenException('Callback chose to terminate stream'));
+    },
+  })
+  heartbeatTerminatedByCallback(): Observable<any> {
+    return interval(2000).pipe(
+      map((i) => ({
+        data: JSON.stringify({ seq: i, ts: new Date().toISOString() }),
+      })),
+    );
+  }
+
+  /**
+   * @EnforceDropWhileDenied with deny/recover callbacks.
+   *
+   * On DENY: onStreamDeny injects an ACCESS_SUSPENDED event.
+   * On re-PERMIT: onStreamRecover injects an ACCESS_RESTORED event.
+   * Between transitions, data is silently dropped (same as plain
+   * @EnforceDropWhileDenied). The callbacks add in-band signaling
+   * without changing the drop-while-denied core behavior.
+   */
+  @EnforceDropWhileDenied({
+    action: 'stream:heartbeat',
+    resource: 'heartbeat',
+    onStreamDeny: (_decision, emitter) => {
+      emitter.next({
+        data: JSON.stringify({ type: 'ACCESS_SUSPENDED', message: 'Events paused by policy' }),
+      });
+    },
+    onStreamRecover: (_decision, emitter) => {
+      emitter.next({
+        data: JSON.stringify({ type: 'ACCESS_RESTORED', message: 'Events resumed' }),
+      });
+    },
+  })
+  heartbeatDropWithCallbacks(): Observable<any> {
     return interval(2000).pipe(
       map((i) => ({
         data: JSON.stringify({ seq: i, ts: new Date().toISOString() }),
