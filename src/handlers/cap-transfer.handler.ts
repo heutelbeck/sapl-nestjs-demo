@@ -14,7 +14,7 @@ import {
  * with the maximum -- the service method never sees the original value.
  *
  * Policy obligation example:
- *   { "type": "capTransferAmount", "maxAmount": 5000, "argIndex": 0 }
+ *   { "type": "capTransferAmount", "maxAmount": 5000 }
  */
 @Injectable()
 @SaplConstraintHandler('methodInvocation')
@@ -27,13 +27,13 @@ export class CapTransferHandler implements MethodInvocationConstraintHandlerProv
 
   getHandler(constraint: any): (context: MethodInvocationContext) => void {
     const maxAmount = constraint.maxAmount;
-    const argIndex = constraint.argIndex ?? 0;
+    const amountArgIndex = 0;
     return (context) => {
-      const requested = Number(context.args[argIndex]);
+      const requested = Number(context.args[amountArgIndex]);
       if (requested > maxAmount) {
-        context.args[argIndex] = maxAmount;
+        context.args[amountArgIndex] = maxAmount;
         this.logger.log(
-          `[CAP] ${context.className}.${context.methodName} args[${argIndex}]: ${requested} -> ${maxAmount} (limit: ${maxAmount})`,
+          `[CAP] ${context.className}.${context.methodName} args[${amountArgIndex}]: ${requested} -> ${maxAmount} (limit: ${maxAmount})`,
         );
       }
     };

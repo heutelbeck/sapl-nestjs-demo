@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
 import {
   ErrorMappingConstraintHandlerProvider,
   SaplConstraintHandler,
@@ -38,10 +38,9 @@ export class EnrichErrorHandler implements ErrorMappingConstraintHandlerProvider
       this.logger.log(
         `[ERROR-ENRICH] Enriching error with support URL: ${supportUrl}`,
       );
-      const enriched = new Error(`${error.message} | Support: ${supportUrl}`);
-      enriched.name = error.name;
-      enriched.stack = error.stack;
-      return enriched;
+      return new InternalServerErrorException(
+        `${error.message} | Support: ${supportUrl}`,
+      );
     };
   }
 }

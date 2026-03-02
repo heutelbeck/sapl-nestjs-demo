@@ -5,8 +5,7 @@ permit
 obligation
   {
     "type": "capTransferAmount",
-    "maxAmount": 5000,
-    "argIndex": 0
+    "maxAmount": 5000
   }
 obligation
   {
