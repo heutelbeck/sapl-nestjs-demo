@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Controller, Get, HttpCode, Param, Post, Query } from '@nestjs/common';
 import { PatientService } from './patient.service';
 
 /**
@@ -37,6 +37,7 @@ export class ServiceDemoController {
     return this.patientService.listPatients();
   }
 
+  @HttpCode(200)
   @Post('transfer')
   transfer(@Query('amount') amount: string) {
     return this.patientService.transfer(Number(amount));

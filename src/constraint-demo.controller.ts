@@ -44,10 +44,10 @@ export class ConstraintDemoController {
    *
    * The PDP returns a PERMIT with obligation combining all three filter types:
    *   - blacken $.ssn (mask all but last 4 digits)
-   *   - delete $.internalNotes (remove field entirely)
+   *   - delete $.internal_notes (remove field entirely)
    *   - replace $.email (substitute with placeholder)
    *
-   * Expected: ssn masked, internalNotes absent, email replaced with "redacted@example.com"
+   * Expected: ssn masked, internal_notes absent, email replaced with "redacted@example.com"
    */
   @PreEnforce({ action: 'readPatientFull', resource: 'patientFull' })
   @Get('patient-full')
@@ -57,7 +57,7 @@ export class ConstraintDemoController {
       ssn: '123-45-6789',
       email: 'jane.doe@example.com',
       diagnosis: 'healthy',
-      internalNotes: 'Follow-up scheduled for next week',
+      internal_notes: 'Follow-up scheduled for next week',
     };
   }
 

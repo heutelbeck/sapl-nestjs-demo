@@ -35,12 +35,20 @@ export class PatientService {
     },
   ];
 
-  @PreEnforce({ action: 'service:listPatients', resource: 'patients' })
+  getPatientById(id: string): PatientRecord | undefined {
+    return this.patients.find((p) => p.id === id);
+  }
+
+  getAllPatients(): PatientRecord[] {
+    return [...this.patients];
+  }
+
+  @PreEnforce({ action: 'listPatients', resource: 'patients' })
   listPatients(): PatientRecord[] {
     return [...this.patients];
   }
 
-  @PreEnforce({ action: 'service:findPatient', resource: 'patient' })
+  @PreEnforce({ action: 'findPatient', resource: 'patient' })
   findPatient(name: string): PatientRecord[] {
     return this.patients.filter((p) =>
       p.name.toLowerCase().includes(name.toLowerCase()),
@@ -48,7 +56,7 @@ export class PatientService {
   }
 
   @PostEnforce({
-    action: 'service:getPatientDetail',
+    action: 'getPatientDetail',
     resource: (ctx) => ({ type: 'patientDetail', data: ctx.returnValue }),
   })
   getPatientDetail(id: string): PatientRecord | undefined {
@@ -56,7 +64,7 @@ export class PatientService {
   }
 
   @PreEnforce({
-    action: 'service:getPatientSummary',
+    action: 'getPatientSummary',
     resource: 'patientSummary',
   })
   getPatientSummary(id: string): any {
@@ -64,7 +72,7 @@ export class PatientService {
     return patient ? { ...patient, insurance: 'INS-9876-XYZ' } : undefined;
   }
 
-  @PreEnforce({ action: 'service:searchPatients', resource: 'patientSearch' })
+  @PreEnforce({ action: 'searchPatients', resource: 'patientSearch' })
   searchPatients(query: string): PatientRecord[] {
     return this.patients.filter(
       (p) =>
@@ -73,8 +81,8 @@ export class PatientService {
     );
   }
 
-  @PreEnforce({ action: 'service:transfer', resource: 'account' })
-  transfer(amount: number): string {
-    return `Transferred ${amount}`;
+  @PreEnforce({ action: 'transfer', resource: 'account' })
+  transfer(amount: number) {
+    return { transferred: amount, recipient: 'default-account', status: 'completed' };
   }
 }

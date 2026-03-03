@@ -1,7 +1,7 @@
-policy "permit-service-patient-detail"
+policy "permit-read-patients"
 permit
-  action == "getPatientDetail";
-  resource.type == "patientDetail";
+  action == "readPatients";
+  resource == "patients";
 obligation
   {
     "type": "filterJsonContent",

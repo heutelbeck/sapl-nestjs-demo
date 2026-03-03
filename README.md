@@ -136,7 +136,7 @@ The only endpoints requiring authentication. The policy uses `<jwt.token>` to ex
 
 ```bash
 # Get a token
-TOKEN=$(curl -s -X POST 'http://localhost:8080/realms/demo/protocol/openid-connect/token' -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=password' -d 'client_id=nestjs-app' -d 'client_secret=dev-secret' -d 'username=clinician1' -d 'password=password' | jq -r '.access_token')
+TOKEN=$(curl -s -X POST 'http://localhost:8080/realms/demo/protocol/openid-connect/token' -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=password' -d 'client_id=demo-app' -d 'client_secret=dev-secret' -d 'username=clinician1' -d 'password=password' | jq -r '.access_token')
 
 # Permitted: clinician1 (pilotId=1) accessing pilot 1 data
 curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/exportData/1/1 | jq

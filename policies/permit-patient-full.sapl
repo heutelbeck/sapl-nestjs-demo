@@ -13,7 +13,7 @@ obligation
       },
       {
         "type": "delete",
-        "path": "$.internalNotes"
+        "path": "$.internal_notes"
       },
       {
         "type": "replace",

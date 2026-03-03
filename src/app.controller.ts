@@ -2,14 +2,23 @@ import {
   Controller,
   ForbiddenException,
   Get,
+  HttpCode,
   Logger,
   Param,
+  Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
-import { PdpService, PreEnforce, SubscriptionContext } from '@sapl/nestjs';
+import {
+  PdpService,
+  PostEnforce,
+  PreEnforce,
+  SubscriptionContext,
+} from '@sapl/nestjs';
 import { AppService } from './app.service';
 import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { PatientService } from './patient.service';
 
 function bearerToken(ctx: SubscriptionContext) {
   const auth = ctx.request.headers?.authorization;
@@ -31,6 +40,7 @@ export class AppController {
 
   constructor(
     private readonly appService: AppService,
+    private readonly patientService: PatientService,
     private readonly pdpService: PdpService,
   ) {}
 
@@ -134,6 +144,29 @@ export class AppController {
   ) {
     this.logger.log(`exportData2: pilot=${pilotId} seq=${sequenceId}`);
     return this.appService.getExportData(pilotId, sequenceId);
+  }
+
+  @PreEnforce({ action: 'readPatient', resource: 'patient' })
+  @Get('patient/:id')
+  getPatient(@Param('id') id: string) {
+    return this.patientService.getPatientById(id);
+  }
+
+  @PostEnforce({ action: 'readPatients', resource: 'patients' })
+  @Get('patients')
+  getPatients() {
+    return this.patientService.getAllPatients();
+  }
+
+  @HttpCode(200)
+  @Post('transfer')
+  @PreEnforce({ action: 'transfer', resource: 'account' })
+  transfer(@Query('amount') amount: string) {
+    return {
+      transferred: Number(amount),
+      recipient: 'default-account',
+      status: 'completed',
+    };
   }
 
   private static handleExportDeny(ctx: SubscriptionContext, decision: any) {
