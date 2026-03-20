@@ -6,12 +6,20 @@ Demo application for [`@sapl/nestjs`](https://github.com/heutelbeck/sapl-nestjs)
 
 ![Architecture](https://raw.githubusercontent.com/heutelbeck/sapl-nestjs-demo/main/docs/architecture.svg)
 
+## Prerequisites
+
+- Node.js 20+
+- Docker (for Keycloak and SAPL Node)
+
 ## Quick Start
 
 ```bash
 docker compose up -d
-npm install && npm run start:dev
+npm install
+npm run start:dev
 ```
+
+Keycloak takes about 30 seconds to import the realm on first start. Wait until `curl -s http://localhost:8080/realms/demo` returns JSON before running the app.
 
 Swagger UI: http://localhost:3000/api-docs
 
