@@ -1,21 +1,27 @@
-import { Controller, Get, Logger, Param, Request } from '@nestjs/common';
-import { PreEnforce, PostEnforce, SubscriptionContext } from '@sapl/nestjs';
+import { Controller, Get, Logger, Param } from '@nestjs/common';
+import { ClsService } from 'nestjs-cls';
+import { PreEnforce, PostEnforce } from '@sapl/nestjs';
 import { AuditTrailHandler } from './handlers/audit-trail.handler';
+import { POLICY_TIMESTAMP_KEY } from './handlers/inject-timestamp.handler';
 
 /**
- * Demonstrates all constraint handler types supported by @sapl/nestjs.
+ * Demonstrates all constraint handler patterns supported by @sapl/nestjs.
  *
  * Each endpoint is protected by a SAPL policy that attaches obligations
- * or advice. The ConstraintEnforcementService discovers registered
- * handlers via the @SaplConstraintHandler decorator and builds a
- * ConstraintHandlerBundle that enforces all constraints.
+ * or advice. The `EnforcementPlanner` discovers registered handlers via
+ * the `@SaplConstraintHandler('provider')` decorator and produces an
+ * `EnforcementPlan` keyed by signal kind that the PEP discharges per
+ * lifecycle event.
  *
  */
 @Controller('api/constraints')
 export class ConstraintDemoController {
   private readonly logger = new Logger(ConstraintDemoController.name);
 
-  constructor(private readonly auditTrailHandler: AuditTrailHandler) {}
+  constructor(
+    private readonly auditTrailHandler: AuditTrailHandler,
+    private readonly cls: ClsService,
+  ) {}
 
   /**
    * 1a. Content Filter -- blacken
@@ -23,8 +29,8 @@ export class ConstraintDemoController {
    * The PDP returns a PERMIT with obligation:
    *   { "type": "filterJsonContent", "actions": [{ "type": "blacken", "path": "$.ssn", "discloseRight": 4 }] }
    *
-   * The built-in ContentFilteringProvider (MappingConstraintHandlerProvider)
-   * masks the SSN field, disclosing only the last 4 characters.
+   * The built-in ContentFilteringProvider attaches an output-signal mapper
+   * that masks the SSN field, disclosing only the last 4 characters.
    *
    * Expected: { name: "Jane Doe", ssn: "XXXXX6789", email: "...", diagnosis: "..." }
    */
@@ -62,13 +68,14 @@ export class ConstraintDemoController {
   }
 
   /**
-   * 2a. RunnableConstraintHandlerProvider -- LogAccessHandler
+   * 2a. Decision-signal runner -- LogAccessHandler
    *
    * The PDP returns a PERMIT with obligation:
    *   { "type": "logAccess", "message": "Patient data accessed by clinician" }
    *
-   * LogAccessHandler.getHandler() returns a () => void that logs the message.
-   * This runs on ON_DECISION signal, before the controller method executes.
+   * LogAccessHandler attaches a runner to the `decision` signal that
+   * logs the message. The runner fires when the PDP decision arrives,
+   * before the controller method executes.
    *
    * Watch the server console for: [LogAccessHandler] [POLICY] Patient data accessed by clinician
    */
@@ -82,14 +89,15 @@ export class ConstraintDemoController {
   }
 
   /**
-   * 2b. ConsumerConstraintHandlerProvider -- AuditTrailHandler
+   * 2b. Output-signal consumer -- AuditTrailHandler
    *
    * The PDP returns a PERMIT with obligation:
    *   { "type": "auditTrail", "action": "readMedicalRecord" }
    *
-   * AuditTrailHandler.getHandler() returns a (value) => void that receives
-   * the response value and records it to an in-memory audit log. The response
-   * itself is NOT modified (consumers are side-effect only).
+   * AuditTrailHandler attaches a consumer to the `output` signal that
+   * receives the response value and records it to an in-memory audit
+   * log. Consumers observe without transforming; the response itself
+   * is unchanged.
    *
    * Call this endpoint, then call GET /api/constraints/audit-log to see
    * what was recorded.
@@ -113,14 +121,15 @@ export class ConstraintDemoController {
   }
 
   /**
-   * 2c. MappingConstraintHandlerProvider -- RedactFieldsHandler
+   * 2c. Output-signal mapper -- RedactFieldsHandler
    *
    * The PDP returns a PERMIT with obligation:
    *   { "type": "redactFields", "fields": ["ssn", "creditCard"] }
    *
-   * RedactFieldsHandler.getHandler() returns a (value) => any that replaces
-   * the specified fields with "[REDACTED]". Unlike the built-in ContentFilter
-   * (blacken/delete/replace), this is a custom domain-specific transformation.
+   * RedactFieldsHandler attaches a mapper to the `output` signal that
+   * replaces the named fields with "[REDACTED]". Unlike the built-in
+   * ContentFilter (blacken / delete / replace via filterJsonContent),
+   * this is a custom domain-specific transformation.
    *
    * Expected: ssn and creditCard become "[REDACTED]", other fields unchanged.
    */
@@ -137,18 +146,18 @@ export class ConstraintDemoController {
   }
 
   /**
-   * 2d. FilterPredicateConstraintHandlerProvider -- ClassificationFilterHandler
+   * 2d. Output-signal mapper that filters array contents
+   *     -- ClassificationFilterHandler
    *
    * The PDP returns a PERMIT with obligation:
    *   { "type": "filterByClassification", "maxLevel": "INTERNAL" }
    *
-   * ClassificationFilterHandler.getHandler() returns a (element) => boolean
-   * predicate. When the controller returns an array, the ConstraintHandlerBundle
-   * filters elements using this predicate. Elements with classification above
-   * "INTERNAL" are excluded.
+   * ClassificationFilterHandler attaches a mapper to the `output` signal
+   * that, when the controller returns an array, filters out elements
+   * with classification above the policy-allowed maximum.
    *
-   * Expected: only PUBLIC and INTERNAL documents are returned; CONFIDENTIAL
-   * and SECRET documents are filtered out.
+   * Expected: only PUBLIC and INTERNAL documents are returned;
+   * CONFIDENTIAL and SECRET documents are filtered out.
    */
   @PreEnforce({ action: 'readDocuments', resource: 'documents' })
   @Get('documents')
@@ -162,44 +171,46 @@ export class ConstraintDemoController {
   }
 
   /**
-   * 2e. MethodInvocationConstraintHandlerProvider -- InjectTimestampHandler
+   * 2e. Decision-signal runner publishing into request-scoped CLS state
+   *     -- InjectTimestampHandler
    *
    * The PDP returns a PERMIT with obligation:
    *   { "type": "injectTimestamp" }
    *
-   * InjectTimestampHandler.getHandler() returns a (request) => void that adds
-   * a "policyTimestamp" property to the Express request object BEFORE the
-   * controller method executes. The controller reads this injected value
-   * and includes it in the response.
+   * InjectTimestampHandler attaches a runner to the decision signal that
+   * captures `new Date().toISOString()` into ClsService under
+   * POLICY_TIMESTAMP_KEY. The controller reads it back from ClsService
+   * and includes it in the response. This is the new-API replacement
+   * for the older request-mutation pattern: handlers no longer reach
+   * the request object directly, so cross-cutting state moves through
+   * the host's request-scoped DI.
    *
-   * This demonstrates how policies can modify the execution context
-   * before the handler runs (e.g., injecting metadata, modifying parameters).
-   *
-   * Expected: response includes policyTimestamp set by the constraint handler.
+   * Expected: response includes the policy-derived timestamp.
    */
   @PreEnforce({ action: 'readTimestamped', resource: 'timestamped' })
   @Get('timestamped')
-  getTimestamped(@Request() req) {
+  getTimestamped() {
     return {
-      message: 'This response includes a policy-injected timestamp',
-      policyTimestamp: req.policyTimestamp ?? 'not injected',
+      message: 'This response includes a policy-derived timestamp',
+      policyTimestamp: this.cls.get<string>(POLICY_TIMESTAMP_KEY) ?? 'not injected',
       data: { sensor: 'temp-01', value: 22.5 },
     };
   }
 
   /**
-   * 2f. ErrorHandlerProvider + ErrorMappingConstraintHandlerProvider
+   * 2f. Error-signal consumer + error-signal mapper
    *
    * The PDP returns a PERMIT with two obligations:
    *   { "type": "notifyOnError" }
    *   { "type": "enrichError", "supportUrl": "https://support.example.com/errors" }
    *
    * The controller intentionally throws to demonstrate the error pipeline:
-   *   1. NotifyOnErrorHandler (ErrorHandlerProvider) logs the error (side-effect)
-   *   2. EnrichErrorHandler (ErrorMappingConstraintHandlerProvider) transforms
-   *      the error, appending a support URL to the message
+   *   1. NotifyOnErrorHandler attaches a consumer to the `error` signal
+   *      that logs the error (side-effect).
+   *   2. EnrichErrorHandler attaches a mapper to the `error` signal that
+   *      transforms the error, appending a support URL to the message.
    *
-   * The enriched error is then thrown by the interceptor's catchError pipe.
+   * The enriched error is then re-thrown by the aspect.
    *
    * Watch the server console for both [ERROR-NOTIFY] and [ERROR-ENRICH] logs.
    * Expected: 500 with enriched error message including the support URL.
@@ -217,8 +228,9 @@ export class ConstraintDemoController {
    *   { decision: "PERMIT", resource: { message: "...", policyGenerated: true, ... } }
    *
    * The policy uses SAPL's "transform" keyword to replace the resource entirely.
-   * The ConstraintHandlerBundle substitutes the controller's return value with
-   * the PDP-provided resource. The controller's actual return value is ignored.
+   * The planner inserts a synthetic head-of-output mapper that substitutes
+   * the controller's return value with the PDP-provided resource. The
+   * controller's actual return value is ignored.
    *
    * This is useful when the PDP itself determines what data the user should see,
    * e.g., returning policy-compliant versions of resources, anonymized datasets,
@@ -311,21 +323,14 @@ export class ConstraintDemoController {
   /**
    * 3e. @PostEnforce with onDeny Callback
    *
-   * Demonstrates a custom deny handler that returns a structured response
-   * instead of throwing ForbiddenException. The onDeny callback receives
-   * the SubscriptionContext and the PDP decision.
-   *
-   * When denied, the onDeny callback returns a JSON body with the decision
-   * details instead of a 403 status code.
+   * On deny the aspect throws `AccessDeniedError` (a
+   * `ForbiddenException` subclass) and the HTTP layer routes a 403.
+   * A `@Catch(ForbiddenException)` exception filter customises the
+   * response shape if needed -- standard NestJS, no decorator option.
    */
   @PostEnforce({
     action: 'readAudit',
     resource: 'audit',
-    onDeny: (ctx: SubscriptionContext, decision) => ({
-      denied: true,
-      reason: decision.decision,
-      handler: ctx.handler,
-    }),
   })
   @Get('audit')
   getAudit() {

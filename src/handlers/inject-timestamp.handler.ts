@@ -1,40 +1,45 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  MethodInvocationConstraintHandlerProvider,
-  MethodInvocationContext,
-  SaplConstraintHandler,
-} from '@sapl/nestjs';
+import { ClsService } from 'nestjs-cls';
+import { ConstraintHandlerProvider, SaplConstraintHandler, ScopedHandler } from '@sapl/nestjs';
+
+export const POLICY_TIMESTAMP_KEY = 'policyTimestamp';
 
 /**
- * Demonstrates: MethodInvocationConstraintHandlerProvider
+ * Demonstrates: a decision-signal runner that publishes policy-derived
+ * metadata into request-scoped CLS state.
  *
- * Handles obligations/advice of type "injectTimestamp".
- * Modifies the request object BEFORE the controller method executes,
- * adding a policy-enforcement timestamp. The controller can then
- * read this value and include it in its response.
- *
- * This pattern is useful for:
- * - Injecting policy-derived metadata into the request
- * - Modifying request parameters based on policy constraints
- * - Adding audit/traceability data before method execution
+ * Handles obligations/advice of type "injectTimestamp". Fires when a
+ * PDP decision arrives, captures the current timestamp into
+ * `ClsService` under `POLICY_TIMESTAMP_KEY`, and lets the controller
+ * read it via the same key. This replaces the older request-mutation
+ * pattern: handlers no longer receive the request object directly;
+ * cross-cutting state moves through the host's request-scoped DI
+ * (ClsService here) rather than through the constraint-handler
+ * signal channel.
  *
  * Policy obligation example:
  *   { "type": "injectTimestamp" }
  */
 @Injectable()
-@SaplConstraintHandler('methodInvocation')
-export class InjectTimestampHandler implements MethodInvocationConstraintHandlerProvider {
+@SaplConstraintHandler('provider')
+export class InjectTimestampHandler implements ConstraintHandlerProvider {
   private readonly logger = new Logger(InjectTimestampHandler.name);
 
-  isResponsible(constraint: any): boolean {
-    return constraint?.type === 'injectTimestamp';
-  }
+  constructor(private readonly cls: ClsService) {}
 
-  getHandler(_constraint: any): (context: MethodInvocationContext) => void {
-    return (context) => {
-      const timestamp = new Date().toISOString();
-      context.request.policyTimestamp = timestamp;
-      this.logger.log(`[METHOD] Injected policy timestamp: ${timestamp}`);
-    };
+  getHandlers(constraint: unknown): ReadonlyArray<ScopedHandler> {
+    if ((constraint as { type?: unknown })?.type !== 'injectTimestamp') return [];
+    return [
+      {
+        signal: 'decision',
+        priority: 0,
+        shape: 'runner',
+        handler: () => {
+          const timestamp = new Date().toISOString();
+          this.cls.set(POLICY_TIMESTAMP_KEY, timestamp);
+          this.logger.log(`[DECISION] Published policy timestamp to CLS: ${timestamp}`);
+        },
+      },
+    ];
   }
 }

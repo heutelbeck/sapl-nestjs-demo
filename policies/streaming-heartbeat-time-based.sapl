@@ -1,11 +1,13 @@
-policy "streaming-heartbeat-time-based"
-permit
-  action == "stream:heartbeat";
-  resource == "heartbeat";
-  var second = time.secondOf(<time.now>);
-  second >= 0 && second < 20 || second >= 40;
-obligation
-  {
-    "type": "logAccess",
-    "message": "Streaming heartbeat access"
-  }
+set "streaming-heartbeat" priority permit or suspend
+  for action == "stream:heartbeat"
+
+  policy "permit-window"
+    permit
+      resource == "heartbeat";
+      var second = time.secondOf(<time.now>);
+      second >= 0 && second < 20 || second >= 40;
+    obligation
+      {
+        "type": "logAccess",
+        "message": "Streaming heartbeat access"
+      }

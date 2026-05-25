@@ -1,42 +1,41 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Observable, interval, map } from 'rxjs';
-import {
-  EnforceTillDenied,
-  EnforceDropWhileDenied,
-  EnforceRecoverableIfDenied,
-} from '@sapl/nestjs';
+import { StreamEnforce } from '@sapl/nestjs';
 
 /**
- * Streaming authorization demos using the three SAPL enforcement strategies.
+ * Streaming authorization demos using the unified SAPL @StreamEnforce
+ * decorator from 2.0.
  *
- * All three methods emit a heartbeat every 2 seconds. The PDP policy
- * permit-stream-heartbeat cycles PERMIT/DENY based on the current second
- * (0-19 permit, 20-39 deny, 40-59 permit), so you can observe how each
- * strategy handles authorization changes in real time.
+ * The cycling policy `streaming-heartbeat-time-based` emits:
+ *   second in [0, 20)  -> PERMIT (with logAccess obligation).
+ *   second in [20, 40) -> SUSPEND (paused; subscription stays alive).
+ *   second in [40, 60) -> PERMIT (with logAccess obligation).
+ *
+ * Each method emits a heartbeat every 2 seconds while the FSM is in
+ * the Permitting state. The two `@StreamEnforce` flags select between
+ * the variants the legacy 1.x trio expressed via three separate
+ * decorators:
+ *   - default flags                        -> drop-while-suspended.
+ *   - signalTransitions: true              -> surface boundaries on next.
+ *   - pauseRapDuringSuspend: true          -> unsubscribe the protected
+ *                                             method's Observable on entry
+ *                                             into Suspended.
  */
 @Injectable()
 export class StreamingDemoService {
   private readonly logger = new Logger(StreamingDemoService.name);
 
   /**
-   * @EnforceTillDenied -- stream terminates permanently on first DENY.
-   *
-   * The onStreamDeny callback sends a final ACCESS_DENIED event before
-   * the stream completes. Once denied, the client must reconnect.
+   * Default behaviour: the protected method's Observable stays connected;
+   * RAP emissions are silently dropped while the FSM is Suspended; any
+   * DENY terminates the subscription with an AccessDeniedException on the
+   * error channel.
    */
-  @EnforceTillDenied({
+  @StreamEnforce({
     action: 'stream:heartbeat',
     resource: 'heartbeat',
-    onStreamDeny: (_decision, subscriber) => {
-      subscriber.next({
-        data: JSON.stringify({
-          type: 'ACCESS_DENIED',
-          message: 'Stream terminated by policy',
-        }),
-      });
-    },
   })
-  heartbeatTillDenied(): Observable<any> {
+  heartbeatDropWhileSuspended(): Observable<unknown> {
     return interval(2000).pipe(
       map((i) => ({
         data: JSON.stringify({ seq: i, ts: new Date().toISOString() }),
@@ -45,16 +44,17 @@ export class StreamingDemoService {
   }
 
   /**
-   * @EnforceDropWhileDenied -- silently drops events during DENY periods.
-   *
-   * The client sees gaps in sequence numbers but the stream stays open.
-   * Events resume automatically when the PDP re-permits.
+   * signalTransitions surfaces suspend / resume boundaries on the
+   * subscriber's `next` channel as AccessDeniedException /
+   * AccessGrantedSignal instances. The controller unwraps them via
+   * `TransitionSignals.onTransitions` and forwards them to the client.
    */
-  @EnforceDropWhileDenied({
+  @StreamEnforce({
     action: 'stream:heartbeat',
     resource: 'heartbeat',
+    signalTransitions: true,
   })
-  heartbeatDropWhileDenied(): Observable<any> {
+  heartbeatWithTransitions(): Observable<unknown> {
     return interval(2000).pipe(
       map((i) => ({
         data: JSON.stringify({ seq: i, ts: new Date().toISOString() }),
@@ -63,77 +63,18 @@ export class StreamingDemoService {
   }
 
   /**
-   * @EnforceRecoverableIfDenied -- sends explicit suspend/restore signals.
-   *
-   * On DENY: onStreamDeny sends an ACCESS_SUSPENDED event.
-   * On re-PERMIT: onStreamRecover sends an ACCESS_RESTORED event.
-   * The client can show UI status changes based on these signals.
+   * pauseRapDuringSuspend disposes the protected method's Observable on
+   * entry into Suspended and re-subscribes on resume into Permitting.
+   * Useful when the upstream is expensive (database polling, external
+   * APIs) and side effects must pause for the duration of the suspension.
    */
-  @EnforceRecoverableIfDenied({
+  @StreamEnforce({
     action: 'stream:heartbeat',
     resource: 'heartbeat',
-    onStreamDeny: (_decision, subscriber) => {
-      subscriber.next({
-        data: JSON.stringify({
-          type: 'ACCESS_SUSPENDED',
-          message: 'Waiting for re-authorization',
-        }),
-      });
-    },
-    onStreamRecover: (_decision, subscriber) => {
-      subscriber.next({
-        data: JSON.stringify({
-          type: 'ACCESS_RESTORED',
-          message: 'Authorization restored',
-        }),
-      });
-    },
+    pauseRapDuringSuspend: true,
+    signalTransitions: true,
   })
-  heartbeatRecoverable(): Observable<any> {
-    return interval(2000).pipe(
-      map((i) => ({
-        data: JSON.stringify({ seq: i, ts: new Date().toISOString() }),
-      })),
-    );
-  }
-
-  /**
-   * @EnforceRecoverableIfDenied with a deny callback.
-   *
-   * On DENY: onStreamDeny injects an ACCESS_SUSPENDED event into the stream.
-   * The stream stays alive and resumes forwarding on re-PERMIT.
-   */
-  @EnforceRecoverableIfDenied({
-    action: 'stream:heartbeat',
-    resource: 'heartbeat',
-    onStreamDeny: (_decision, emitter) => {
-      emitter.next({
-        data: JSON.stringify({
-          type: 'ACCESS_SUSPENDED',
-          message: 'Stream suspended by policy',
-        }),
-      });
-    },
-  })
-  heartbeatTerminatedByCallback(): Observable<any> {
-    return interval(2000).pipe(
-      map((i) => ({
-        data: JSON.stringify({ seq: i, ts: new Date().toISOString() }),
-      })),
-    );
-  }
-
-  /**
-   * @EnforceDropWhileDenied silently drops data during DENY periods.
-   *
-   * No callbacks -- data is simply not forwarded while denied.
-   * The stream stays alive and resumes forwarding on re-PERMIT.
-   */
-  @EnforceDropWhileDenied({
-    action: 'stream:heartbeat',
-    resource: 'heartbeat',
-  })
-  heartbeatDropWithCallbacks(): Observable<any> {
+  heartbeatPausingDuringSuspend(): Observable<unknown> {
     return interval(2000).pipe(
       map((i) => ({
         data: JSON.stringify({ seq: i, ts: new Date().toISOString() }),

@@ -185,11 +185,9 @@ curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/exportData2/
 | GET /api/services/patients/:id | `@PostEnforce` | None | @PostEnforce on service |
 | GET /api/services/patients/:id/summary | `@PreEnforce` | None | Mapping handler on service |
 | POST /api/services/transfer | `@PreEnforce` | None | Argument manipulation |
-| SSE /api/streaming/heartbeat/till-denied | `@EnforceTillDenied` | None | Terminal denial |
-| SSE /api/streaming/heartbeat/drop-while-denied | `@EnforceDropWhileDenied` | None | Silent drops during DENY |
-| SSE /api/streaming/heartbeat/recoverable | `@EnforceRecoverableIfDenied` | None | In-band deny/recover signals |
-| SSE /api/streaming/heartbeat/terminated-by-callback | `@EnforceRecoverableIfDenied` | None | Callback-driven termination |
-| SSE /api/streaming/heartbeat/drop-with-callbacks | `@EnforceDropWhileDenied` | None | Drop with in-band signals |
+| SSE /api/streaming/heartbeat/drop-while-suspended | `@StreamEnforce` (default) | None | Drop heartbeats silently while suspended |
+| SSE /api/streaming/heartbeat/with-transitions | `@StreamEnforce({ signalTransitions: true })` | None | Same drop semantics plus ACCESS_SUSPENDED / ACCESS_RESTORED frames via `TransitionSignals` |
+| SSE /api/streaming/heartbeat/pausing | `@StreamEnforce({ signalTransitions: true, pauseRapDuringSuspend: true })` | None | Disposes the upstream Observable during suspension |
 
 ### Constraint Handler Reference
 

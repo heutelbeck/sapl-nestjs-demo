@@ -11,9 +11,18 @@ services:
       - ./keycloak:/opt/keycloak/data/import:ro
 
   sapl-pdp:
-    image: ghcr.io/heutelbeck/sapl-node:4.0.0-SNAPSHOT
+    image: ghcr.io/heutelbeck/sapl-node:4.1.0-SNAPSHOT
+    # SECURITY INVARIANT: when SAPL Node runs without auth (IO_SAPL_NODE_ALLOWNOAUTH=true,
+    # demo / dev only), it MUST be bound to loopback only. The "127.0.0.1:..." prefix
+    # publishes the port to the host's loopback interface, not to 0.0.0.0. Otherwise an
+    # unauthenticated PDP becomes reachable from any host that can reach the docker host
+    # (LAN, container overlay, dev laptop on a coffee-shop wifi). The NestJS client
+    # enforces the same invariant on its side: HTTP / plaintext-RSocket only to loopback
+    # hosts. Production deployments MUST configure auth (api-key, basic, or oauth2) AND
+    # TLS, after which the bind can widen.
     ports:
-      - "8443:8443"
+      - "127.0.0.1:8443:8443"
+      - "127.0.0.1:7000:7000"
     volumes:
       - ./policies:/pdp/data:ro
     environment:

@@ -31,10 +31,17 @@ import { LogStreamEventHandler } from './handlers/log-stream-event.handler';
     AuthModule,
     SaplModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (config: ConfigService) => ({
-        baseUrl: config.get('SAPL_PDP_URL', 'http://localhost:8443'),
-        allowInsecureConnections: true,
-      }),
+      useFactory: (config: ConfigService) => {
+        const transport = config.get<'http' | 'rsocket'>('SAPL_TRANSPORT', 'http');
+        const baseUrl = config.get('SAPL_PDP_URL', 'http://localhost:8443');
+        return {
+          transport,
+          baseUrl,
+          rsocketHost: config.get('SAPL_PDP_RSOCKET_HOST'),
+          rsocketPort: config.get<number>('SAPL_PDP_RSOCKET_PORT'),
+          allowInsecureConnections: true,
+        };
+      },
       inject: [ConfigService],
     }),
   ],

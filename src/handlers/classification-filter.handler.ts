@@ -1,8 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  FilterPredicateConstraintHandlerProvider,
-  SaplConstraintHandler,
-} from '@sapl/nestjs';
+import { ConstraintHandlerProvider, SaplConstraintHandler, ScopedHandler } from '@sapl/nestjs';
 
 const CLASSIFICATION_LEVELS: Record<string, number> = {
   PUBLIC: 0,
@@ -12,46 +9,53 @@ const CLASSIFICATION_LEVELS: Record<string, number> = {
 };
 
 /**
- * Demonstrates: FilterPredicateConstraintHandlerProvider
+ * Demonstrates: an output-signal mapper that filters array contents.
  *
- * Handles obligations/advice of type "filterByClassification".
- * When the controller returns an array, this handler filters out
- * elements whose classification level exceeds the allowed maximum.
+ * Handles obligations/advice of type "filterByClassification". When
+ * the controller returns an array, this handler filters out elements
+ * whose classification level exceeds the allowed maximum. When the
+ * controller returns a non-array, it is passed through unchanged.
  *
  * Each element is expected to have a "classification" field.
- * Elements without a classification are excluded (fail-closed).
+ * Elements without a known classification are excluded (fail-closed).
  *
  * Policy obligation example:
  *   { "type": "filterByClassification", "maxLevel": "INTERNAL" }
  */
 @Injectable()
-@SaplConstraintHandler('filterPredicate')
-export class ClassificationFilterHandler implements FilterPredicateConstraintHandlerProvider {
+@SaplConstraintHandler('provider')
+export class ClassificationFilterHandler implements ConstraintHandlerProvider {
   private readonly logger = new Logger(ClassificationFilterHandler.name);
 
-  isResponsible(constraint: any): boolean {
-    return constraint?.type === 'filterByClassification';
-  }
-
-  getHandler(constraint: any): (element: any) => boolean {
-    const maxLevel = constraint.maxLevel ?? 'PUBLIC';
+  getHandlers(constraint: unknown): ReadonlyArray<ScopedHandler> {
+    if ((constraint as { type?: unknown })?.type !== 'filterByClassification') return [];
+    const maxLevel = (constraint as { maxLevel?: string }).maxLevel ?? 'PUBLIC';
     const maxRank = CLASSIFICATION_LEVELS[maxLevel] ?? 0;
-    return (element: any) => {
+    const isAdmissible = (element: { classification?: string }): boolean => {
       const elementLevel = element?.classification;
-      const elementRank = CLASSIFICATION_LEVELS[elementLevel];
+      const elementRank = elementLevel !== undefined ? CLASSIFICATION_LEVELS[elementLevel] : undefined;
       if (elementRank === undefined) {
-        this.logger.warn(
-          `[FILTER] Element excluded: unknown classification '${elementLevel}'`,
-        );
+        this.logger.warn(`[FILTER] Element excluded: unknown classification '${elementLevel}'`);
         return false;
       }
       const allowed = elementRank <= maxRank;
       if (!allowed) {
-        this.logger.log(
-          `[FILTER] Excluded ${elementLevel} element (max: ${maxLevel})`,
-        );
+        this.logger.log(`[FILTER] Excluded ${elementLevel} element (max: ${maxLevel})`);
       }
       return allowed;
     };
+    return [
+      {
+        signal: 'output',
+        priority: 0,
+        shape: 'mapper',
+        handler: (value) => {
+          if (Array.isArray(value)) {
+            return value.filter(isAdmissible);
+          }
+          return value;
+        },
+      },
+    ];
   }
 }

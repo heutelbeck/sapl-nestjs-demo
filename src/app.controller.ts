@@ -113,35 +113,31 @@ export class AppController {
   }
 
   /**
-   * @PreEnforce with Custom onDeny Handler (JWT required)
+   * @PreEnforce with custom deny-response shaping (JWT required).
    *
-   * When the PDP denies access, the default behavior is to throw
-   * ForbiddenException (HTTP 403). The onDeny callback overrides this
-   * to return a structured JSON response instead.
+   * When the PDP denies access, the aspect throws `AccessDeniedError`
+   * which `extends ForbiddenException`. The HTTP layer routes that as
+   * a 403 by default. To customise the response shape, write a
+   * NestJS `@Catch(ForbiddenException)` exception filter -- the
+   * idiomatic NestJS mechanism, integrates correctly with
+   * `@Transactional`, and works uniformly across HTTP, RPC and WS
+   * transports.
    *
-   * The callback receives:
-   *   - ctx: SubscriptionContext (request, params, user info)
-   *   - decision: the full PDP decision object
-   *
-   * This is useful for SPAs or APIs that need machine-readable deny
-   * responses rather than HTTP error codes.
+   * The shape of the customised response is the filter's concern,
+   * not the decorator's.
    */
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @PreEnforce({
     action: 'exportData',
-    resource: (ctx) => ({
-      pilotId: ctx.params.pilotId,
-      sequenceId: ctx.params.sequenceId,
+    resource: (context) => ({
+      pilotId: context.params.pilotId,
+      sequenceId: context.params.sequenceId,
     }),
     secrets: bearerToken,
-    onDeny: AppController.handleExportDeny,
   })
   @Get('exportData2/:pilotId/:sequenceId')
-  getExportData2(
-    @Param('pilotId') pilotId: string,
-    @Param('sequenceId') sequenceId: string,
-  ) {
+  getExportData2(@Param('pilotId') pilotId: string, @Param('sequenceId') sequenceId: string) {
     this.logger.log(`exportData2: pilot=${pilotId} seq=${sequenceId}`);
     return this.appService.getExportData(pilotId, sequenceId);
   }
@@ -169,15 +165,4 @@ export class AppController {
     };
   }
 
-  private static handleExportDeny(ctx: SubscriptionContext, decision: any) {
-    return {
-      error: 'access_denied',
-      decision: decision.decision,
-      user: (ctx.request.user as any)?.preferred_username ?? 'unknown',
-      requested: {
-        pilotId: ctx.params.pilotId,
-        sequenceId: ctx.params.sequenceId,
-      },
-    };
-  }
 }
