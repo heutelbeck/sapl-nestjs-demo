@@ -1,6 +1,6 @@
 import { Controller, Sse } from '@nestjs/common';
-import { Observable } from 'rxjs';
-import { TransitionSignals } from '@sapl/nestjs';
+import { Observable, catchError, of, throwError } from 'rxjs';
+import { TransitionSignals, AccessDeniedError } from '@sapl/nestjs';
 import { StreamingDemoService } from './streaming-demo.service';
 
 const SUSPEND_FRAME = {
@@ -11,49 +11,51 @@ const GRANTED_FRAME = {
   data: JSON.stringify({ type: 'ACCESS_RESTORED', message: 'Stream resumed by policy' }),
 };
 
+const DENIED_FRAME = {
+  data: JSON.stringify({ type: 'ACCESS_DENIED', message: 'Stream terminated by policy' }),
+};
+
 /**
- * SSE endpoints for streaming authorization demos against the unified
- * `@StreamEnforce` decorator from `@sapl/nestjs` 2.0.
- *
- * The cycling policy `streaming-heartbeat-time-based` emits PERMIT in
- * [0, 20) and [40, 60) and SUSPEND in [20, 40). The three endpoints
- * below illustrate how the two `@StreamEnforce` flags combine to express
- * the three semantics the legacy 1.x trio expressed via three separate
- * decorators.
+ * SSE endpoints for streaming authorization against the unified `@StreamEnforce`
+ * decorator from `@sapl/nestjs`. The three endpoints express the three streaming
+ * semantics of the 4.1 model: terminate on DENY, suspend silently, and suspend
+ * with observable boundary frames.
  */
 @Controller('api/streaming')
 export class StreamingDemoController {
   constructor(private readonly streamingService: StreamingDemoService) {}
 
   /**
-   * Stream until a DENY decision arrives, then terminate. With the cycling
-   * SUSPEND policy this drops items during the pause window; a real DENY
-   * would close the stream.
+   * Stream until a DENY decision arrives, then terminate.
    * Connect with: curl -N http://localhost:3000/api/streaming/heartbeat/till-denied
    */
   @Sse('heartbeat/till-denied')
   heartbeatTillDenied(): Observable<unknown> {
-    return this.streamingService.heartbeatDropWhileSuspended();
+    return this.streamingService.heartbeatTillDenied().pipe(
+      catchError((error) =>
+        error instanceof AccessDeniedError ? of(DENIED_FRAME) : throwError(() => error),
+      ),
+    );
   }
 
   /**
-   * Drop heartbeats silently while denied/suspended; resume on PERMIT.
-   * Connect with: curl -N http://localhost:3000/api/streaming/heartbeat/drop-while-denied
+   * Drop heartbeats silently while suspended; resume on PERMIT. No boundary frames.
+   * Connect with: curl -N http://localhost:3000/api/streaming/heartbeat/silent-suspending
    */
-  @Sse('heartbeat/drop-while-denied')
-  heartbeatDropWhileDenied(): Observable<unknown> {
-    return this.streamingService.heartbeatPausingDuringSuspend();
+  @Sse('heartbeat/silent-suspending')
+  heartbeatSilentSuspending(): Observable<unknown> {
+    return this.streamingService.heartbeatSilentSuspending();
   }
 
   /**
-   * Drop semantics with explicit ACCESS_SUSPENDED / ACCESS_RESTORED frames
-   * sent to the client on every boundary crossing, so subscribers can react
-   * to pauses without losing the connection.
-   * Connect with: curl -N http://localhost:3000/api/streaming/heartbeat/recoverable
+   * Suspend semantics with explicit ACCESS_SUSPENDED / ACCESS_RESTORED frames sent
+   * to the client on every boundary crossing, so subscribers react to pauses without
+   * losing the connection.
+   * Connect with: curl -N http://localhost:3000/api/streaming/heartbeat/observed-suspending
    */
-  @Sse('heartbeat/recoverable')
-  heartbeatRecoverable(): Observable<unknown> {
-    const raw = this.streamingService.heartbeatWithTransitions();
+  @Sse('heartbeat/observed-suspending')
+  heartbeatObservedSuspending(): Observable<unknown> {
+    const raw = this.streamingService.heartbeatObservedSuspending();
     const withSuspend = TransitionSignals.onSuspend(raw, () => undefined, () => SUSPEND_FRAME);
     return TransitionSignals.onGranted(withSuspend, () => undefined, () => GRANTED_FRAME);
   }

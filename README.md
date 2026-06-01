@@ -1,6 +1,6 @@
 # @sapl/nestjs Demo
 
-Demo application for [`@sapl/nestjs`](https://github.com/heutelbeck/sapl-nestjs) showing every feature of the library: basic authorization, content filtering, all seven constraint handler interfaces, resource replacement, advice vs obligations, service-level enforcement, and streaming SSE with continuous authorization. All endpoints work with plain `curl` except the export endpoints, which require a JWT from Keycloak. The source files have comprehensive JSDoc -- read the code for the full story.
+Demo application for [`@sapl/nestjs`](https://github.com/heutelbeck/sapl-nestjs) showing every feature of the library: basic authorization, content filtering, the unified constraint handler model (DECISION / INPUT / OUTPUT / ERROR signals; runner / consumer / mapper shapes), resource replacement, advice vs obligations, service-level enforcement, and streaming SSE with continuous authorization. All endpoints work with plain `curl` except the export endpoints, which require a JWT from Keycloak. The source files have comprehensive JSDoc -- read the code for the full story.
 
 ## Architecture
 
@@ -8,7 +8,7 @@ Demo application for [`@sapl/nestjs`](https://github.com/heutelbeck/sapl-nestjs)
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 22+
 - Docker (for Keycloak and SAPL Node)
 
 ## Quick Start
@@ -44,23 +44,23 @@ curl -s http://localhost:3000/api/constraints/patient-full | jq
 ### Constraint Handlers
 
 ```bash
-# RunnableConstraintHandlerProvider -- logs to server console
+# DECISION runner -- logs to server console
 curl -s http://localhost:3000/api/constraints/logged | jq
 
-# ConsumerConstraintHandlerProvider -- records to audit trail
+# OUTPUT consumer -- records to audit trail
 curl -s http://localhost:3000/api/constraints/audited | jq
 curl -s http://localhost:3000/api/constraints/audit-log | jq
 
-# MappingConstraintHandlerProvider -- redacts fields
+# OUTPUT mapper -- redacts fields
 curl -s http://localhost:3000/api/constraints/redacted | jq
 
-# FilterPredicateConstraintHandlerProvider -- filters array by classification
+# OUTPUT mapper -- filters array by classification
 curl -s http://localhost:3000/api/constraints/documents | jq
 
-# MethodInvocationConstraintHandlerProvider -- injects timestamp into request
+# DECISION runner -- publishes a policy timestamp into request-scoped CLS state
 curl -s http://localhost:3000/api/constraints/timestamped | jq
 
-# ErrorHandlerProvider + ErrorMappingConstraintHandlerProvider -- error pipeline
+# ERROR consumer + ERROR mapper -- error pipeline
 curl -s http://localhost:3000/api/constraints/error-demo | jq
 ```
 
@@ -108,23 +108,19 @@ curl -s -X POST 'http://localhost:3000/api/services/transfer?amount=3000' | jq
 
 ### Streaming Authorization (SSE)
 
-The policy cycles PERMIT/DENY based on the current second: 0-19 permit, 20-39 deny, 40-59 permit.
+The policy cycles based on the current second: 0-19 permit, 20-39 closed, 40-59 permit.
+In the closed window the `stream:terminate` action is denied and the `stream:suspend`
+action is suspended.
 
 ```bash
 # Terminates permanently on first DENY
 curl -N http://localhost:3000/api/streaming/heartbeat/till-denied
 
-# Silently drops events during DENY, resumes on PERMIT
-curl -N http://localhost:3000/api/streaming/heartbeat/drop-while-denied
+# Silently drops events while suspended, resumes on PERMIT
+curl -N http://localhost:3000/api/streaming/heartbeat/silent-suspending
 
-# Sends ACCESS_SUSPENDED / ACCESS_RESTORED signals on transitions
-curl -N http://localhost:3000/api/streaming/heartbeat/recoverable
-
-# Callback-driven termination: sends GOODBYE event then terminates
-curl -N http://localhost:3000/api/streaming/heartbeat/terminated-by-callback
-
-# Drop-while-denied with in-band suspend/restore signals
-curl -N http://localhost:3000/api/streaming/heartbeat/drop-with-callbacks
+# Sends ACCESS_SUSPENDED / ACCESS_RESTORED frames on transitions
+curl -N http://localhost:3000/api/streaming/heartbeat/observed-suspending
 ```
 
 ### Export Data (JWT Required)
@@ -167,13 +163,13 @@ curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/exportData2/
 | GET /api/exportData2/:p/:s | `@PreEnforce` | JWT | Custom onDeny handler |
 | GET /api/constraints/patient | `@PreEnforce` | None | Blacken SSN |
 | GET /api/constraints/patient-full | `@PreEnforce` | None | Blacken + delete + replace |
-| GET /api/constraints/logged | `@PreEnforce` | None | RunnableConstraintHandlerProvider |
-| GET /api/constraints/audited | `@PreEnforce` | None | ConsumerConstraintHandlerProvider |
+| GET /api/constraints/logged | `@PreEnforce` | None | DECISION runner |
+| GET /api/constraints/audited | `@PreEnforce` | None | OUTPUT consumer |
 | GET /api/constraints/audit-log | None | None | View audit trail (auxiliary) |
-| GET /api/constraints/redacted | `@PreEnforce` | None | MappingConstraintHandlerProvider |
-| GET /api/constraints/documents | `@PreEnforce` | None | FilterPredicateConstraintHandlerProvider |
-| GET /api/constraints/timestamped | `@PreEnforce` | None | MethodInvocationConstraintHandlerProvider |
-| GET /api/constraints/error-demo | `@PreEnforce` | None | ErrorHandler + ErrorMapping |
+| GET /api/constraints/redacted | `@PreEnforce` | None | OUTPUT mapper |
+| GET /api/constraints/documents | `@PreEnforce` | None | OUTPUT mapper (filter by classification) |
+| GET /api/constraints/timestamped | `@PreEnforce` | None | DECISION runner (publishes to CLS) |
+| GET /api/constraints/error-demo | `@PreEnforce` | None | ERROR consumer + ERROR mapper |
 | GET /api/constraints/resource-replaced | `@PreEnforce` | None | PDP resource replacement |
 | GET /api/constraints/advised | `@PreEnforce` | None | Advice (best-effort) |
 | GET /api/constraints/record/:id | `@PostEnforce` | None | ctx.returnValue |
@@ -185,21 +181,25 @@ curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/exportData2/
 | GET /api/services/patients/:id | `@PostEnforce` | None | @PostEnforce on service |
 | GET /api/services/patients/:id/summary | `@PreEnforce` | None | Mapping handler on service |
 | POST /api/services/transfer | `@PreEnforce` | None | Argument manipulation |
-| SSE /api/streaming/heartbeat/drop-while-suspended | `@StreamEnforce` (default) | None | Drop heartbeats silently while suspended |
-| SSE /api/streaming/heartbeat/with-transitions | `@StreamEnforce({ signalTransitions: true })` | None | Same drop semantics plus ACCESS_SUSPENDED / ACCESS_RESTORED frames via `TransitionSignals` |
-| SSE /api/streaming/heartbeat/pausing | `@StreamEnforce({ signalTransitions: true, pauseRapDuringSuspend: true })` | None | Disposes the upstream Observable during suspension |
+| SSE /api/streaming/heartbeat/till-denied | `@StreamEnforce` (action `stream:terminate`) | None | DENY terminates the stream |
+| SSE /api/streaming/heartbeat/silent-suspending | `@StreamEnforce` (action `stream:suspend`) | None | Drop heartbeats silently while suspended; resume on PERMIT |
+| SSE /api/streaming/heartbeat/observed-suspending | `@StreamEnforce({ signalTransitions: true })` (action `stream:suspend`) | None | Same drop semantics plus ACCESS_SUSPENDED / ACCESS_RESTORED frames via `TransitionSignals` |
 
 ### Constraint Handler Reference
 
-| Interface | Signature | When It Runs | Demo Handler |
-|-----------|-----------|--------------|--------------|
-| `RunnableConstraintHandlerProvider` | `() => void` | On decision, before method | `LogAccessHandler` |
-| `ConsumerConstraintHandlerProvider` | `(value) => void` | After method, side-effect on response | `AuditTrailHandler` |
-| `MappingConstraintHandlerProvider` | `(value) => any` | After method, transforms response | `RedactFieldsHandler` |
-| `FilterPredicateConstraintHandlerProvider` | `(element) => boolean` | After method, filters arrays | `ClassificationFilterHandler` |
-| `MethodInvocationConstraintHandlerProvider` | `(ctx: MethodInvocationContext) => void` | Before method, modifies request/args | `InjectTimestampHandler`, `CapTransferHandler` |
-| `ErrorHandlerProvider` | `(error) => void` | On error, side-effect | `NotifyOnErrorHandler` |
-| `ErrorMappingConstraintHandlerProvider` | `(error) => Error` | On error, transforms error | `EnrichErrorHandler` |
+A handler provider implements one method, `getHandlers(constraint): ScopedHandler[]`, and is
+registered with `@SaplConstraintHandler('provider')`. Each returned `ScopedHandler` binds a
+`handler` to a `signal` (lifecycle point), a `shape` (runner / consumer / mapper), and a
+`priority`. One provider can return several handlers across different signals.
+
+| Signal | Shape | Handler value | Demo handler |
+|--------|-------|---------------|--------------|
+| `decision` | `runner` | `() => void` (side effect on decision) | `LogAccessHandler`, `InjectTimestampHandler` |
+| `input` | `mapper` | `(args) => args` (rewrite method arguments) | `CapTransferHandler` |
+| `output` | `consumer` | `(value) => void` (inspect the response) | `AuditTrailHandler` |
+| `output` | `mapper` | `(value) => any` (transform/filter the response) | `RedactFieldsHandler`, `ClassificationFilterHandler` |
+| `error` | `consumer` | `(error) => void` (observe the error) | `NotifyOnErrorHandler` |
+| `error` | `mapper` | `(error) => Error` (transform the error) | `EnrichErrorHandler` |
 
 ### Policy Reference
 
@@ -209,11 +209,11 @@ curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/exportData2/
 | permit-clinician-export | PERMIT | Clinician pilotId match, time-gated (JWT) |
 | permit-read-patient | PERMIT + obligation | Blackens SSN via filterJsonContent |
 | permit-patient-full | PERMIT + obligation | Blacken + delete + replace combined |
-| permit-logged | PERMIT + obligation | logAccess (Runnable) |
-| permit-audited | PERMIT + obligation | auditTrail (Consumer) |
-| permit-redacted | PERMIT + obligation | redactFields (Mapping) |
-| permit-documents | PERMIT + obligation | filterByClassification (FilterPredicate) |
-| permit-timestamped | PERMIT + obligation | injectTimestamp (MethodInvocation) |
+| permit-logged | PERMIT + obligation | logAccess (decision runner) |
+| permit-audited | PERMIT + obligation | auditTrail (output consumer) |
+| permit-redacted | PERMIT + obligation | redactFields (output mapper) |
+| permit-documents | PERMIT + obligation | filterByClassification (output mapper) |
+| permit-timestamped | PERMIT + obligation | injectTimestamp (decision runner) |
 | permit-error-handling | PERMIT + obligation | notifyOnError + enrichError (error pipeline) |
 | permit-replaced | PERMIT + transform | PDP replaces the resource entirely |
 | permit-advised | PERMIT + advice | logAccess + unhandled advice (best-effort) |
