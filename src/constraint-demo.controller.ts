@@ -321,7 +321,7 @@ export class ConstraintDemoController {
   }
 
   /**
-   * 3e. @PostEnforce with onDeny Callback
+   * 3e. @PostEnforce with a custom deny response (exception filter)
    *
    * On deny the aspect throws `AccessDeniedError` (a
    * `ForbiddenException` subclass) and the HTTP layer routes a 403.

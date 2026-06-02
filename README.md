@@ -79,7 +79,7 @@ curl -s http://localhost:3000/api/constraints/record/42 | jq
 # Unhandled obligation -- fail-fast (403 despite PERMIT)
 curl -s http://localhost:3000/api/constraints/unhandled | jq
 
-# @PostEnforce with onDeny callback -- structured deny response
+# @PostEnforce deny path -- a @Catch(ForbiddenException) filter shapes the response
 curl -s http://localhost:3000/api/constraints/audit | jq
 ```
 
@@ -148,7 +148,7 @@ curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/exportData/1
 # Denied: clinician1 (pilotId=1) accessing pilot 2 data
 curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/exportData/2/1 | jq
 
-# Custom onDeny handler -- structured JSON deny response instead of 403
+# Custom deny response via exception filter -- structured JSON instead of 403
 curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/exportData2/2/1 | jq
 ```
 
@@ -160,7 +160,7 @@ curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/exportData2/
 |------|-----------|------|-------------|
 | GET /api/hello | Manual | None | `PdpService.decideOnce()` |
 | GET /api/exportData/:p/:s | `@PreEnforce` | JWT | Custom resource builder, ABAC |
-| GET /api/exportData2/:p/:s | `@PreEnforce` | JWT | Custom onDeny handler |
+| GET /api/exportData2/:p/:s | `@PreEnforce` | JWT | Custom deny response (exception filter) |
 | GET /api/constraints/patient | `@PreEnforce` | None | Blacken SSN |
 | GET /api/constraints/patient-full | `@PreEnforce` | None | Blacken + delete + replace |
 | GET /api/constraints/logged | `@PreEnforce` | None | DECISION runner |
@@ -174,7 +174,7 @@ curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/exportData2/
 | GET /api/constraints/advised | `@PreEnforce` | None | Advice (best-effort) |
 | GET /api/constraints/record/:id | `@PostEnforce` | None | ctx.returnValue |
 | GET /api/constraints/unhandled | `@PreEnforce` | None | Unhandled obligation (fail-fast) |
-| GET /api/constraints/audit | `@PostEnforce` | None | onDeny callback |
+| GET /api/constraints/audit | `@PostEnforce` | None | Custom deny response (exception filter) |
 | GET /api/services/patients | `@PreEnforce` | None | Service-level basic enforcement |
 | GET /api/services/patients/find | `@PreEnforce` | None | Find patient (logAccess) |
 | GET /api/services/patients/search | `@PreEnforce` | None | Combined: log + filter |

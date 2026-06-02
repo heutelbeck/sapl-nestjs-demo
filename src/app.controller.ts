@@ -32,7 +32,7 @@ function bearerToken(ctx: SubscriptionContext) {
  * These endpoints show the three fundamental ways to enforce policies:
  *   1. Manual PDP access (PdpService.decideOnce)
  *   2. @PreEnforce decorator (declarative, before method execution)
- *   3. @PreEnforce with onDeny callback (custom deny handling)
+ *   3. @PreEnforce with a custom deny response (exception filter)
  */
 @Controller('api')
 export class AppController {
