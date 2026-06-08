@@ -119,7 +119,7 @@ curl -N http://localhost:3000/api/streaming/heartbeat/till-denied
 # Silently drops events while suspended, resumes on PERMIT
 curl -N http://localhost:3000/api/streaming/heartbeat/silent-suspending
 
-# Sends ACCESS_SUSPENDED / ACCESS_RESTORED frames on transitions
+# Sends ACCESS_SUSPENDED / ACCESS_GRANTED frames on transitions
 curl -N http://localhost:3000/api/streaming/heartbeat/observed-suspending
 ```
 
@@ -183,7 +183,7 @@ curl -s -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/exportData2/
 | POST /api/services/transfer | `@PreEnforce` | None | Argument manipulation |
 | SSE /api/streaming/heartbeat/till-denied | `@StreamEnforce` (action `stream:terminate`) | None | DENY terminates the stream |
 | SSE /api/streaming/heartbeat/silent-suspending | `@StreamEnforce` (action `stream:suspend`) | None | Drop heartbeats silently while suspended; resume on PERMIT |
-| SSE /api/streaming/heartbeat/observed-suspending | `@StreamEnforce({ signalTransitions: true })` (action `stream:suspend`) | None | Same drop semantics plus ACCESS_SUSPENDED / ACCESS_RESTORED frames via `TransitionSignals` |
+| SSE /api/streaming/heartbeat/observed-suspending | `@StreamEnforce({ signalTransitions: true })` (action `stream:suspend`) | None | Same drop semantics plus ACCESS_SUSPENDED / ACCESS_GRANTED frames via `TransitionSignals` |
 
 ### Constraint Handler Reference
 

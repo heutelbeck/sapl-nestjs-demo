@@ -8,7 +8,7 @@ const SUSPEND_FRAME = {
 };
 
 const GRANTED_FRAME = {
-  data: JSON.stringify({ type: 'ACCESS_RESTORED', message: 'Stream resumed by policy' }),
+  data: JSON.stringify({ type: 'ACCESS_GRANTED', message: 'Access granted by policy' }),
 };
 
 const DENIED_FRAME = {
@@ -48,7 +48,7 @@ export class StreamingDemoController {
   }
 
   /**
-   * Suspend semantics with explicit ACCESS_SUSPENDED / ACCESS_RESTORED frames sent
+   * Suspend semantics with explicit ACCESS_SUSPENDED / ACCESS_GRANTED frames sent
    * to the client on every boundary crossing, so subscribers react to pauses without
    * losing the connection.
    * Connect with: curl -N http://localhost:3000/api/streaming/heartbeat/observed-suspending
