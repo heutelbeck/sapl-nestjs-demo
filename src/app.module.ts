@@ -4,7 +4,6 @@ import { SaplModule } from '@sapl/nestjs';
 import { AuthModule } from './auth/auth.module';
 import { AppController } from './app.controller';
 import { ConstraintDemoController } from './constraint-demo.controller';
-import { ServiceDemoController } from './service-demo.controller';
 import { AppService } from './app.service';
 import { PatientService } from './patient.service';
 import { LogAccessHandler } from './handlers/log-access.handler';
@@ -48,7 +47,6 @@ import { LogStreamEventHandler } from './handlers/log-stream-event.handler';
   controllers: [
     AppController,
     ConstraintDemoController,
-    ServiceDemoController,
     StreamingDemoController,
   ],
   providers: [

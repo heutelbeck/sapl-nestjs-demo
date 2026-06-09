@@ -165,4 +165,37 @@ export class AppController {
     };
   }
 
+  // Service-layer endpoints: enforcement is on the PatientService methods, not here.
+
+  @Get('services/patients/find')
+  findPatient(@Query('name') name: string) {
+    return this.patientService.findPatient(name);
+  }
+
+  @Get('services/patients/search')
+  searchPatients(@Query('q') query: string) {
+    return this.patientService.searchPatients(query);
+  }
+
+  @Get('services/patients/:id/summary')
+  getPatientSummary(@Param('id') id: string) {
+    return this.patientService.getPatientSummary(id);
+  }
+
+  @Get('services/patients/:id')
+  getPatientDetail(@Param('id') id: string) {
+    return this.patientService.getPatientDetail(id);
+  }
+
+  @Get('services/patients')
+  listPatients() {
+    return this.patientService.listPatients();
+  }
+
+  @HttpCode(200)
+  @Post('services/transfer')
+  serviceTransfer(@Query('amount') amount: string) {
+    return this.patientService.transfer(Number(amount));
+  }
+
 }

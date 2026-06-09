@@ -17,11 +17,12 @@ const DENIED_FRAME = {
 
 /**
  * SSE endpoints for streaming authorization against the unified `@StreamEnforce`
- * decorator from `@sapl/nestjs`. The three endpoints express the three streaming
- * semantics of the 4.1 model: terminate on DENY, suspend silently, and suspend
- * with observable boundary frames.
+ * decorator from `@sapl/nestjs`. The three controller endpoints express the three
+ * streaming semantics of the 4.1 model: terminate on DENY, suspend silently, and
+ * suspend with observable boundary frames. The same observable-suspend rendering
+ * is exposed under `api/services/streaming` to show enforcement on a domain service.
  */
-@Controller('api/streaming')
+@Controller()
 export class StreamingDemoController {
   constructor(private readonly streamingService: StreamingDemoService) {}
 
@@ -29,7 +30,7 @@ export class StreamingDemoController {
    * Stream until a DENY decision arrives, then terminate.
    * Connect with: curl -N http://localhost:3000/api/streaming/heartbeat/till-denied
    */
-  @Sse('heartbeat/till-denied')
+  @Sse('api/streaming/heartbeat/till-denied')
   heartbeatTillDenied(): Observable<unknown> {
     return this.streamingService.heartbeatTillDenied().pipe(
       catchError((error) =>
@@ -42,7 +43,7 @@ export class StreamingDemoController {
    * Drop heartbeats silently while suspended; resume on PERMIT. No boundary frames.
    * Connect with: curl -N http://localhost:3000/api/streaming/heartbeat/silent-suspending
    */
-  @Sse('heartbeat/silent-suspending')
+  @Sse('api/streaming/heartbeat/silent-suspending')
   heartbeatSilentSuspending(): Observable<unknown> {
     return this.streamingService.heartbeatSilentSuspending();
   }
@@ -53,8 +54,21 @@ export class StreamingDemoController {
    * losing the connection.
    * Connect with: curl -N http://localhost:3000/api/streaming/heartbeat/observed-suspending
    */
-  @Sse('heartbeat/observed-suspending')
+  @Sse('api/streaming/heartbeat/observed-suspending')
   heartbeatObservedSuspending(): Observable<unknown> {
+    return this.observedSuspending();
+  }
+
+  /**
+   * Service-layer streaming: enforcement is on StreamingDemoService.heartbeatObservedSuspending().
+   * Connect with: curl -N http://localhost:3000/api/services/streaming/heartbeat/observed-suspending
+   */
+  @Sse('api/services/streaming/heartbeat/observed-suspending')
+  serviceHeartbeatObservedSuspending(): Observable<unknown> {
+    return this.observedSuspending();
+  }
+
+  private observedSuspending(): Observable<unknown> {
     const raw = this.streamingService.heartbeatObservedSuspending();
     const withSuspend = TransitionSignals.onSuspend(raw, () => undefined, () => SUSPEND_FRAME);
     return TransitionSignals.onGranted(withSuspend, () => undefined, () => GRANTED_FRAME);
