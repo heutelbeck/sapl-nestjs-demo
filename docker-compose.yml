@@ -11,7 +11,7 @@ services:
       - ./keycloak:/opt/keycloak/data/import:ro
 
   sapl-pdp:
-    image: ghcr.io/heutelbeck/sapl-node:4.1.0-SNAPSHOT
+    image: ghcr.io/heutelbeck/sapl-node:4.1.2
     # SECURITY INVARIANT: when SAPL Node runs without auth (IO_SAPL_NODE_ALLOWNOAUTH=true,
     # demo / dev only), it MUST be bound to loopback only. The "127.0.0.1:..." prefix
     # publishes the port to the host's loopback interface, not to 0.0.0.0. Otherwise an
